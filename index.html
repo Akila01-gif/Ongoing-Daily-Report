@@ -1227,25 +1227,23 @@ function fbListen(path,cb){
 }
 
 async function loadData(){
-  // FIRST: localStorage (instant, always try this for speed)
-  try{const ls=localStorage.getItem('drt_data');if(ls){data=JSON.parse(ls);}}catch{data=[];}
-
-  // SECOND: try window.storage (Claude artifact env) — may have newer data
-  try{const r=await window.storage.get('drt_data',true);if(r&&r.value){data=JSON.parse(r.value);try{localStorage.setItem('drt_data',r.value);}catch(e){}return;}}catch(e){}
-
-  // THIRD: try Firebase (shared — may have other members' data)
-  // Load Firebase data in background so UI isn't blocked
+  // FIRST: try Firebase (shared cloud — always the source of truth)
   if(window._fbReady){
-    fbGet('drt_data').then(val=>{
-      if(!val)return;
-      const fbData=typeof val==='string'?JSON.parse(val):(Array.isArray(val)?val:[]);
-      if(fbData.length>0){
-        data=fbData;
-        try{localStorage.setItem('drt_data',JSON.stringify(data));}catch(e){}
-        renderView();renderSummary();updateLoginChips();
+    try{
+      const val=await fbGetWithTimeout('drt_data',5000);
+      if(val){
+        const fbData=typeof val==='string'?JSON.parse(val):(Array.isArray(val)?val:[]);
+        if(fbData.length>0){
+          data=fbData;
+          try{localStorage.setItem('drt_data',JSON.stringify(data));}catch(e){}
+          return;
+        }
       }
-    }).catch(()=>{});
+    }catch(e){}
   }
+  // SECOND: localStorage fallback (only if Firebase is empty or unavailable)
+  try{const ls=localStorage.getItem('drt_data');if(ls){data=JSON.parse(ls);return;}}catch{data=[];}
+  data=[];
 }
 
 async function saveData(){
