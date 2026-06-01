@@ -22,74 +22,180 @@
 html,body{font-family:var(--font-body);overflow-x:hidden;height:auto}
 body{background:var(--offwhite);height:auto;min-height:0}
 #loginPage{position:fixed;inset:0;display:flex;z-index:500;}
-.split-left{width:50%;height:100vh;background:var(--slate);position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;padding:2.8rem 3rem;transition:transform 0.9s cubic-bezier(0.76,0,0.24,1);z-index:2;flex-shrink:0;}
-.split-left::before{content:'';position:absolute;width:480px;height:480px;border-radius:50%;background:radial-gradient(circle, rgba(0,201,167,0.18) 0%, transparent 70%);top:-120px;right:-160px;pointer-events:none;}
-.split-left::after{content:'';position:absolute;width:320px;height:320px;border-radius:50%;background:radial-gradient(circle, rgba(255,183,3,0.10) 0%, transparent 70%);bottom:-80px;left:-80px;pointer-events:none;}
-.grid-lines{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:0.06;}
+
+/* ===== LEFT PANEL — Deep Cosmic Aurora ===== */
+.split-left{
+  width:50%;height:100vh;
+  background:linear-gradient(135deg,#0a0618 0%,#0d0a2e 35%,#06141f 70%,#030d18 100%);
+  position:relative;overflow:hidden;display:flex;flex-direction:column;
+  justify-content:space-between;padding:2.8rem 3rem;
+  transition:transform 0.9s cubic-bezier(0.76,0,0.24,1);z-index:2;flex-shrink:0;
+}
+/* Aurora blobs */
+.split-left::before{
+  content:'';position:absolute;width:600px;height:600px;border-radius:50%;
+  background:radial-gradient(circle, rgba(120,40,255,0.28) 0%, rgba(0,201,167,0.12) 45%, transparent 70%);
+  top:-180px;right:-200px;pointer-events:none;
+  animation:auroraBlob1 8s ease-in-out infinite alternate;
+}
+.split-left::after{
+  content:'';position:absolute;width:400px;height:400px;border-radius:50%;
+  background:radial-gradient(circle, rgba(255,80,120,0.18) 0%, rgba(255,183,3,0.08) 50%, transparent 70%);
+  bottom:-100px;left:-80px;pointer-events:none;
+  animation:auroraBlob2 10s ease-in-out infinite alternate;
+}
+@keyframes auroraBlob1{0%{transform:translate(0,0) scale(1)}100%{transform:translate(30px,40px) scale(1.12)}}
+@keyframes auroraBlob2{0%{transform:translate(0,0) scale(1)}100%{transform:translate(-20px,-30px) scale(1.08)}}
+
+/* Aurora horizontal sweep */
+.split-left .aurora-sweep{
+  position:absolute;inset:0;pointer-events:none;overflow:hidden;
+}
+.split-left .aurora-sweep::before{
+  content:'';position:absolute;
+  width:200%;height:3px;
+  background:linear-gradient(90deg,transparent,rgba(120,40,255,0.6),rgba(0,201,167,0.8),rgba(255,80,120,0.5),transparent);
+  top:38%;left:-50%;
+  animation:auroraSweep 6s ease-in-out infinite;
+  filter:blur(2px);
+}
+.split-left .aurora-sweep::after{
+  content:'';position:absolute;
+  width:200%;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(0,201,167,0.4),rgba(255,183,3,0.5),rgba(120,40,255,0.3),transparent);
+  top:55%;left:-50%;
+  animation:auroraSweep 8s ease-in-out 2s infinite reverse;
+  filter:blur(1px);
+}
+@keyframes auroraSweep{0%,100%{transform:translateX(-10%) skewY(-1deg)}50%{transform:translateX(10%) skewY(1deg)}}
+
+.grid-lines{position:absolute;inset:0;pointer-events:none;overflow:hidden;opacity:0.04;}
 .grid-lines svg{width:100%;height:100%}
+
 .brand-wordmark{position:relative;z-index:5;}
-.brand-main{font-family:var(--font-body);font-size:12px;font-weight:600;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.4);}
-.brand-dot{color:var(--teal)}
+.brand-main{font-family:var(--font-body);font-size:12px;font-weight:600;letter-spacing:0.3em;text-transform:uppercase;color:rgba(255,255,255,0.35);}
+.brand-dot{color:#a855f7}
+
 .hero-block{position:relative;z-index:5;flex:1;display:flex;flex-direction:column;justify-content:center;}
-.hero-eyebrow{font-size:10px;font-weight:600;letter-spacing:0.28em;text-transform:uppercase;color:var(--teal);margin-bottom:1.2rem;display:flex;align-items:center;gap:8px;font-family:var(--font-body);}
-.hero-eyebrow::before{content:'';width:28px;height:1.5px;background:var(--teal);display:inline-block}
-.hero-heading{font-family:var(--font-head);font-size:clamp(44px,5vw,68px);font-weight:900;color:#fff;line-height:0.93;letter-spacing:-1px;margin-bottom:1.4rem;}
-.hero-heading em{font-style:normal;display:block;font-weight:900;background:linear-gradient(135deg, var(--teal-light), var(--teal));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-.hero-desc{font-size:13px;color:rgba(255,255,255,0.45);line-height:1.7;max-width:320px;font-weight:400;}
-.quote-card{position:relative;z-index:5;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:1.2rem 1.4rem;backdrop-filter:blur(10px);margin-bottom:0.5rem;}
-.quote-text{font-size:12px;color:rgba(255,255,255,0.7);line-height:1.65;font-style:italic;transition:opacity 0.4s;font-family:var(--font-body);font-weight:400;}
-.quote-author{font-size:10px;color:var(--teal);font-weight:600;margin-top:8px;letter-spacing:0.08em;font-family:var(--font-body);}
+.hero-eyebrow{font-size:10px;font-weight:600;letter-spacing:0.28em;text-transform:uppercase;
+  color:#a855f7;margin-bottom:1.2rem;display:flex;align-items:center;gap:8px;font-family:var(--font-body);}
+.hero-eyebrow::before{content:'';width:28px;height:1.5px;
+  background:linear-gradient(90deg,#a855f7,#00c9a7);display:inline-block}
+
+.hero-heading{font-family:var(--font-head);font-size:clamp(44px,5vw,68px);font-weight:900;
+  color:#fff;line-height:0.93;letter-spacing:-1px;margin-bottom:1.4rem;}
+.hero-heading em{font-style:normal;display:block;font-weight:900;
+  background:linear-gradient(135deg,#c084fc,#818cf8,#00c9a7);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+
+.hero-desc{font-size:13px;color:rgba(255,255,255,0.38);line-height:1.7;max-width:320px;font-weight:400;}
+
+.quote-card{position:relative;z-index:5;
+  background:rgba(168,85,247,0.06);
+  border:1px solid rgba(168,85,247,0.18);
+  border-radius:12px;padding:1.2rem 1.4rem;backdrop-filter:blur(10px);margin-bottom:0.5rem;}
+.quote-text{font-size:12px;color:rgba(255,255,255,0.65);line-height:1.65;font-style:italic;transition:opacity 0.4s;font-family:var(--font-body);font-weight:400;}
+.quote-author{font-size:10px;color:#a855f7;font-weight:600;margin-top:8px;letter-spacing:0.08em;font-family:var(--font-body);}
 .quote-dots{display:flex;gap:5px;margin-top:10px}
-.qdot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.2);cursor:pointer;transition:all .25s}
-.qdot.active{background:var(--teal);width:16px;border-radius:3px}
-.stat-chips{position:absolute;right:2rem;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:5;opacity:0;animation:chipsIn 0.8s ease 0.3s forwards;}
+.qdot{width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,0.15);cursor:pointer;transition:all .25s}
+.qdot.active{background:#a855f7;width:16px;border-radius:3px}
+
+.stat-chips{position:absolute;right:2rem;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:10px;z-index:5;opacity:0;animation:chipsIn 0.8s ease 0.3s forwards;}
 @keyframes chipsIn{to{opacity:1}}
-.chip{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:10px 14px;text-align:center;backdrop-filter:blur(12px);min-width:70px;animation:chipFloat 4s ease-in-out infinite;}
+.chip{background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.2);
+  border-radius:10px;padding:10px 14px;text-align:center;backdrop-filter:blur(12px);min-width:70px;
+  animation:chipFloat 4s ease-in-out infinite;}
 .chip:nth-child(2){animation-delay:-1.3s}.chip:nth-child(3){animation-delay:-2.6s}
 @keyframes chipFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
-.chip-num{font-family:var(--font-head);font-size:22px;color:#fff;line-height:1}
-.chip-label{font-size:8.5px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.4);margin-top:3px}
-.teal-line{position:absolute;left:0;top:0;width:3px;height:100%;background:linear-gradient(180deg,transparent 0%,var(--teal) 40%,var(--amber) 70%,transparent 100%);opacity:0.7;}
+.chip-num{font-family:var(--font-head);font-size:22px;color:#c084fc;line-height:1}
+.chip-label{font-size:8.5px;text-transform:uppercase;letter-spacing:0.1em;color:rgba(255,255,255,0.35);margin-top:3px}
+
+.teal-line{position:absolute;left:0;top:0;width:3px;height:100%;
+  background:linear-gradient(180deg,transparent 0%,#a855f7 30%,#00c9a7 60%,#f059f0 85%,transparent 100%);opacity:0.8;}
 #bubbleCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;}
-.split-right{width:50%;height:100vh;background:var(--offwhite);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:2rem;transition:transform 0.9s cubic-bezier(0.76,0,0.24,1);z-index:1;flex-shrink:0;}
-.split-right::before{content:'';position:absolute;width:600px;height:600px;border-radius:50%;background:radial-gradient(circle,rgba(0,201,167,0.06) 0%,transparent 70%);top:-200px;right:-200px;pointer-events:none;}
+
+/* ===== RIGHT PANEL — Warm Ivory with Purple Glow ===== */
+.split-right{
+  width:50%;height:100vh;
+  background:linear-gradient(160deg,#faf8ff 0%,#f3f0ff 40%,#fff9f0 100%);
+  display:flex;align-items:center;justify-content:center;
+  position:relative;overflow:hidden;padding:2rem;
+  transition:transform 0.9s cubic-bezier(0.76,0,0.24,1);z-index:1;flex-shrink:0;
+}
+.split-right::before{
+  content:'';position:absolute;width:500px;height:500px;border-radius:50%;
+  background:radial-gradient(circle,rgba(168,85,247,0.08) 0%,transparent 70%);
+  top:-150px;right:-150px;pointer-events:none;
+}
+.split-right::after{
+  content:'';position:absolute;width:300px;height:300px;border-radius:50%;
+  background:radial-gradient(circle,rgba(0,201,167,0.07) 0%,transparent 70%);
+  bottom:-80px;left:-60px;pointer-events:none;
+}
+
 .form-card{width:100%;max-width:400px;position:relative;z-index:2;opacity:0;transform:translateY(20px);animation:formIn 0.7s ease 0.4s forwards;}
 @keyframes formIn{to{opacity:1;transform:none}}
-.form-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(0,201,167,0.1);border:1px solid rgba(0,201,167,0.25);border-radius:20px;padding:4px 12px;margin-bottom:1.6rem;font-size:10.5px;font-weight:600;color:var(--teal-dark);letter-spacing:0.1em;text-transform:uppercase;}
-.form-tag::before{content:'';width:6px;height:6px;border-radius:50%;background:var(--teal);display:inline-block}
-.form-title{font-family:var(--font-head);font-size:34px;font-weight:800;color:var(--slate);letter-spacing:-0.5px;margin-bottom:0.3rem;line-height:1.05;}
-.form-sub{font-size:13px;color:#8fa3b1;margin-bottom:1.8rem;font-weight:400;font-family:var(--font-body);}
-.type-toggle{display:flex;background:rgba(15,25,35,0.06);border-radius:10px;padding:4px;margin-bottom:1.4rem;gap:4px;}
-.type-btn{flex:1;padding:9px 10px;border-radius:7px;border:none;cursor:pointer;background:transparent;font-family:var(--font-body);font-size:11.5px;font-weight:600;color:#3d5a6e;text-transform:uppercase;letter-spacing:0.05em;transition:all 0.22s;display:flex;align-items:center;justify-content:center;gap:6px;}
-.type-btn.active{background:#fff;color:var(--slate);box-shadow:0 2px 10px rgba(0,0,0,0.08);}
-.type-btn:hover:not(.active){color:var(--teal-dark);background:rgba(0,201,167,0.08);}
+
+.form-tag{display:inline-flex;align-items:center;gap:6px;
+  background:rgba(168,85,247,0.08);border:1px solid rgba(168,85,247,0.22);
+  border-radius:20px;padding:4px 12px;margin-bottom:1.6rem;font-size:10.5px;font-weight:600;
+  color:#7c3aed;letter-spacing:0.1em;text-transform:uppercase;}
+.form-tag::before{content:'';width:6px;height:6px;border-radius:50%;
+  background:linear-gradient(135deg,#a855f7,#00c9a7);display:inline-block}
+
+.form-title{font-family:var(--font-head);font-size:34px;font-weight:800;color:#1a0a2e;letter-spacing:-0.5px;margin-bottom:0.3rem;line-height:1.05;}
+.form-sub{font-size:13px;color:#9b8ab8;margin-bottom:1.8rem;font-weight:400;font-family:var(--font-body);}
+
+.type-toggle{display:flex;background:rgba(168,85,247,0.07);border-radius:10px;padding:4px;margin-bottom:1.4rem;gap:4px;}
+.type-btn{flex:1;padding:9px 10px;border-radius:7px;border:none;cursor:pointer;background:transparent;
+  font-family:var(--font-body);font-size:11.5px;font-weight:600;color:#7c6a9e;text-transform:uppercase;
+  letter-spacing:0.05em;transition:all 0.22s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.type-btn.active{background:#fff;color:#1a0a2e;box-shadow:0 2px 10px rgba(168,85,247,0.15);}
+.type-btn:hover:not(.active){color:#7c3aed;background:rgba(168,85,247,0.08);}
+
 .fld{margin-bottom:1rem;position:relative}
-.fld label{display:block;font-size:10px;font-weight:700;color:#8fa3b1;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;}
-.fld input{width:100%;padding:11px 14px 11px 40px;background:#fff;border:1.5px solid #e2eaf0;border-radius:10px;color:var(--slate);font-size:13.5px;font-family:var(--font-body);outline:none;transition:all .2s;box-shadow:0 1px 4px rgba(0,0,0,0.04);}
-.fld input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,201,167,0.12)}
-.fld input::placeholder{color:#c5d4de}
+.fld label{display:block;font-size:10px;font-weight:700;color:#9b8ab8;text-transform:uppercase;letter-spacing:0.12em;margin-bottom:6px;}
+.fld input{width:100%;padding:11px 14px 11px 40px;
+  background:#fff;border:1.5px solid #e8e0f5;border-radius:10px;color:#1a0a2e;
+  font-size:13.5px;font-family:var(--font-body);outline:none;transition:all .2s;
+  box-shadow:0 1px 4px rgba(168,85,247,0.06);}
+.fld input:focus{border-color:#a855f7;box-shadow:0 0 0 3px rgba(168,85,247,0.12)}
+.fld input::placeholder{color:#c5b8e0}
 .fld-icon{position:absolute;left:13px;bottom:11px;font-size:15px;pointer-events:none}
-.step-badge{padding:9px 13px;border-radius:9px;font-size:11.5px;font-weight:600;margin-bottom:1rem;text-align:center;background:#f0fdf8;border:1.5px solid rgba(0,201,167,0.25);color:var(--teal-dark)}
+.step-badge{padding:9px 13px;border-radius:9px;font-size:11.5px;font-weight:600;margin-bottom:1rem;text-align:center;
+  background:#f5f0ff;border:1.5px solid rgba(168,85,247,0.2);color:#7c3aed}
+
 .login-err{display:none;margin-top:10px;padding:9px 13px;background:#fff5f5;border:1.5px solid #ffd0d0;border-radius:9px;color:#d63031;font-size:12px;text-align:center;font-weight:600}
-.btn-cta{width:100%;padding:0;margin-top:0.5rem;border:none;border-radius:50px;cursor:pointer;background:linear-gradient(135deg,var(--teal) 0%,var(--teal-dark) 100%);position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(0,201,167,0.35);transition:transform .2s,box-shadow .2s;}
-.btn-cta:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,201,167,0.45)}
+
+.btn-cta{width:100%;padding:0;margin-top:0.5rem;border:none;border-radius:50px;cursor:pointer;
+  background:linear-gradient(135deg,#a855f7 0%,#7c3aed 50%,#6d28d9 100%);
+  position:relative;overflow:hidden;box-shadow:0 8px 24px rgba(168,85,247,0.45);transition:transform .2s,box-shadow .2s;}
+.btn-cta:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(168,85,247,0.55)}
 .btn-cta:active{transform:translateY(0)}
-.btn-cta-inner{display:flex;align-items:center;justify-content:center;gap:9px;padding:14px 20px;position:relative;z-index:1;font-family:var(--font-body);font-size:13.5px;font-weight:700;color:#fff;letter-spacing:0.5px;text-transform:uppercase;}
-.btn-cta::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);transform:translateX(-100%);animation:shimmer 2.5s ease-in-out infinite;}
+.btn-cta-inner{display:flex;align-items:center;justify-content:center;gap:9px;padding:14px 20px;
+  position:relative;z-index:1;font-family:var(--font-body);font-size:13.5px;font-weight:700;color:#fff;
+  letter-spacing:0.5px;text-transform:uppercase;}
+.btn-cta::before{content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2),transparent);
+  transform:translateX(-100%);animation:shimmer 2.5s ease-in-out infinite;}
 @keyframes shimmer{to{transform:translateX(200%)}}
-.btn-cta.amber-var{background:linear-gradient(135deg,var(--amber),#e5a500)!important;box-shadow:0 8px 24px rgba(255,183,3,0.35)!important}
-.btn-cta.amber-var .btn-cta-inner{color:var(--slate)}
-.forgot-link{text-align:center;margin-top:10px;font-size:12px;color:var(--teal-dark);cursor:pointer;font-weight:700;transition:all .2s;letter-spacing:.01em;display:inline-block;width:100%;text-decoration:underline;text-decoration-color:rgba(0,168,140,0.35);text-underline-offset:3px;}
-.forgot-link:hover{opacity:.75;text-decoration-color:var(--teal-dark);}
-.forgot-panel{display:none;margin-top:.6rem;background:#f8fcff;border:1.5px solid #d0e8f0;border-radius:11px;padding:1rem 1.1rem;}
+.btn-cta.amber-var{background:linear-gradient(135deg,#f59e0b,#d97706)!important;box-shadow:0 8px 24px rgba(245,158,11,0.35)!important}
+.btn-cta.amber-var .btn-cta-inner{color:#fff}
+
+.forgot-link{text-align:center;margin-top:10px;font-size:12px;color:#7c3aed;cursor:pointer;font-weight:700;transition:all .2s;
+  letter-spacing:.01em;display:inline-block;width:100%;text-decoration:underline;
+  text-decoration-color:rgba(168,85,247,0.35);text-underline-offset:3px;}
+.forgot-link:hover{opacity:.75;text-decoration-color:#7c3aed;}
+.forgot-panel{display:none;margin-top:.6rem;background:#f8f5ff;border:1.5px solid #ddd0f5;border-radius:11px;padding:1rem 1.1rem;}
 .forgot-panel.visible{display:block;animation:formIn .3s ease}
-.forgot-panel .fp-title{font-size:12.5px;font-weight:700;color:var(--slate);margin-bottom:.7rem;display:flex;align-items:center;gap:6px}
+.forgot-panel .fp-title{font-size:12.5px;font-weight:700;color:#1a0a2e;margin-bottom:.7rem;display:flex;align-items:center;gap:6px}
 .forgot-panel .fp-title span{font-size:15px}
-.fp-back{font-size:11px;color:#8fa3b1;cursor:pointer;margin-top:8px;text-align:center;transition:color .2s}
-.fp-back:hover{color:var(--teal-dark)}
-.fp-success{display:none;text-align:center;padding:.7rem;background:#f0fdf8;border:1.5px solid rgba(0,201,167,.3);border-radius:9px;color:var(--teal-dark);font-size:12px;font-weight:700;margin-top:.5rem}
-.back-link{text-align:center;margin-top:1rem;font-size:11.5px;color:#8fa3b1;cursor:pointer;transition:color 0.2s;}
-.back-link:hover{color:var(--teal-dark)}
+.fp-back{font-size:11px;color:#9b8ab8;cursor:pointer;margin-top:8px;text-align:center;transition:color .2s}
+.fp-back:hover{color:#7c3aed}
+.fp-success{display:none;text-align:center;padding:.7rem;background:#f5f0ff;border:1.5px solid rgba(168,85,247,.3);border-radius:9px;color:#7c3aed;font-size:12px;font-weight:700;margin-top:.5rem}
+.back-link{text-align:center;margin-top:1rem;font-size:11.5px;color:#9b8ab8;cursor:pointer;transition:color 0.2s;}
+.back-link:hover{color:#7c3aed}
 
 .quality-proc-input{width:100%;padding:5px 24px 5px 7px;border:1.5px solid #e2eaf0;border-radius:6px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23888'/%3E%3C/svg%3E") no-repeat right 8px center;font-size:10.5px;font-family:var(--font-body);color:var(--slate);outline:none;cursor:pointer;text-align:center;appearance:none;-webkit-appearance:none;box-sizing:border-box;height:32px;line-height:1.4;}
 .quality-proc-input:focus{border-color:var(--teal);box-shadow:0 0 0 3px rgba(0,201,167,0.1);}
@@ -293,6 +399,7 @@ input[type=number]{-moz-appearance:textfield}
 <div id="loginPage">
   <div class="split-left">
     <div class="teal-line"></div>
+    <div class="aurora-sweep"></div>
     <canvas id="bubbleCanvas"></canvas>
     <div class="grid-lines">
       <svg viewBox="0 0 500 800" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
@@ -485,6 +592,8 @@ input[type=number]{-moz-appearance:textfield}
           <button class="btn-success" onclick="exportExcelSME()">⬇ Excel Report</button>
           <button class="btn-success" style="background:linear-gradient(135deg,#1565c0,#0d47a1);box-shadow:0 3px 10px rgba(21,101,192,0.35)" onclick="exportMonthlyByDate()">📅 Monthly (Date-wise)</button>
           <button class="btn-success" style="background:linear-gradient(135deg,#7c3aed,#5b21b6);box-shadow:0 3px 10px rgba(124,58,237,0.35)" onclick="saveDailyReport()">💾 Save Daily</button>
+          <button class="btn-success" style="background:linear-gradient(135deg,#e67e22,#d35400);box-shadow:0 3px 10px rgba(230,126,34,0.35)" onclick="openManageProcesses()">✏️ Manage Processes</button>
+          <button class="btn-success" style="background:linear-gradient(135deg,#0d47a1,#1565c0);box-shadow:0 3px 10px rgba(21,101,192,0.35)" onclick="openManageMembers()">👥 Manage Members</button>
         </div>
         <div class="access-note" id="access-note" style="display:none">👁 You can view all team reports. For edits or deletions, contact the SME.</div>
         <div id="resource-dl-bar" style="display:none;gap:7px;align-items:center;flex-wrap:wrap;background:#f0fdf8;border:1.5px solid rgba(0,201,167,0.25);border-radius:10px;padding:10px 14px;margin-bottom:.9rem;">
@@ -1049,23 +1158,23 @@ function launchApp(uid){
   const particles=[];
   function mkParticle(i){
     const angle=Math.random()*Math.PI*2;const dist=Math.random()*Math.max(W,H)*0.75;
-    return{x:W/2+Math.cos(angle)*dist,y:H/2+Math.sin(angle)*dist,tx:W/2+(Math.random()-0.5)*W*0.9,ty:H/2+(Math.random()-0.5)*H*0.9,vx:0,vy:0,r:0.8+Math.random()*2.2,alpha:0,maxAlpha:0.15+Math.random()*0.55,hue:Math.random()<0.72?171:43,sat:Math.random()<0.72?100:90,phase:Math.random()*Math.PI*2,speed:0.006+Math.random()*0.012};
+    return{x:W/2+Math.cos(angle)*dist,y:H/2+Math.sin(angle)*dist,tx:W/2+(Math.random()-0.5)*W*0.9,ty:H/2+(Math.random()-0.5)*H*0.9,vx:0,vy:0,r:0.8+Math.random()*2.2,alpha:0,maxAlpha:0.15+Math.random()*0.55,hue:Math.random()<0.55?271:Math.random()<0.7?171:340,sat:Math.random()<0.72?100:90,phase:Math.random()*Math.PI*2,speed:0.006+Math.random()*0.012};
   }
   for(let i=0;i<PARTICLE_COUNT;i++)particles.push(mkParticle(i));
   const LINK_DIST=88;
-  const blobs=[{x:W*0.2,y:H*0.3,r:Math.min(W,H)*0.28,c:'rgba(0,201,167,0.04)'},{x:W*0.8,y:H*0.7,r:Math.min(W,H)*0.22,c:'rgba(255,183,3,0.03)'},{x:W*0.55,y:H*0.2,r:Math.min(W,H)*0.18,c:'rgba(127,255,212,0.03)'}];
+  const blobs=[{x:W*0.2,y:H*0.3,r:Math.min(W,H)*0.28,c:'rgba(168,85,247,0.07)'},{x:W*0.8,y:H*0.7,r:Math.min(W,H)*0.22,c:'rgba(0,201,167,0.05)'},{x:W*0.55,y:H*0.2,r:Math.min(W,H)*0.18,c:'rgba(255,80,120,0.04)'}];
   const ripples=[];
   let rippleTimer=setInterval(()=>{if(!stopped)ripples.push({r:0,alpha:0.5});},700);
   ripples.push({r:0,alpha:0.5});
   let t=0;
   function draw(){
-    ctx.fillStyle='rgba(6,13,20,0.22)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='rgba(10,6,24,0.22)';ctx.fillRect(0,0,W,H);
     blobs.forEach(b=>{const g=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,b.r);g.addColorStop(0,b.c);g.addColorStop(1,'transparent');ctx.fillStyle=g;ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();});
     const CX=W/2,CY=H/2;
-    for(let i=ripples.length-1;i>=0;i--){const rp=ripples[i];rp.r+=3.2;rp.alpha*=0.965;if(rp.alpha<0.01){ripples.splice(i,1);continue;}ctx.beginPath();ctx.arc(CX,CY,rp.r,0,Math.PI*2);ctx.strokeStyle=`rgba(0,201,167,${rp.alpha*0.4})`;ctx.lineWidth=1.2;ctx.stroke();}
-    particles.forEach((p,i)=>{p.phase+=p.speed;p.tx=W/2+(Math.cos(p.phase+i)*W*0.44);p.ty=H/2+(Math.sin(p.phase*0.7+i*0.3)*H*0.38);const dx=p.tx-p.x,dy=p.ty-p.y;p.vx=p.vx*0.94+dx*0.004;p.vy=p.vy*0.94+dy*0.004;p.x+=p.vx;p.y+=p.vy;if(p.alpha<p.maxAlpha)p.alpha=Math.min(p.maxAlpha,p.alpha+0.008);const pulse=0.7+0.3*Math.sin(t*0.04+p.phase);ctx.beginPath();ctx.arc(p.x,p.y,p.r*pulse,0,Math.PI*2);ctx.fillStyle=p.hue===171?`hsla(171,100%,55%,${p.alpha})`:`hsla(43,100%,52%,${p.alpha*0.8})`;ctx.fill();});
-    for(let i=0;i<particles.length;i++){for(let j=i+1;j<particles.length;j++){const pa=particles[i],pb=particles[j];const dx=pa.x-pb.x,dy=pa.y-pb.y;const dist=Math.sqrt(dx*dx+dy*dy);if(dist<LINK_DIST){const str=(1-dist/LINK_DIST)*Math.min(pa.alpha,pb.alpha)*0.55;ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.strokeStyle=`rgba(0,201,167,${str})`;ctx.lineWidth=0.5;ctx.stroke();}}}
-    const cg=ctx.createRadialGradient(CX,CY,0,CX,CY,90);cg.addColorStop(0,'rgba(0,201,167,0.08)');cg.addColorStop(1,'transparent');ctx.fillStyle=cg;ctx.beginPath();ctx.arc(CX,CY,90,0,Math.PI*2);ctx.fill();
+    for(let i=ripples.length-1;i>=0;i--){const rp=ripples[i];rp.r+=3.2;rp.alpha*=0.965;if(rp.alpha<0.01){ripples.splice(i,1);continue;}ctx.beginPath();ctx.arc(CX,CY,rp.r,0,Math.PI*2);ctx.strokeStyle=`rgba(168,85,247,${rp.alpha*0.4})`;ctx.lineWidth=1.2;ctx.stroke();}
+    particles.forEach((p,i)=>{p.phase+=p.speed;p.tx=W/2+(Math.cos(p.phase+i)*W*0.44);p.ty=H/2+(Math.sin(p.phase*0.7+i*0.3)*H*0.38);const dx=p.tx-p.x,dy=p.ty-p.y;p.vx=p.vx*0.94+dx*0.004;p.vy=p.vy*0.94+dy*0.004;p.x+=p.vx;p.y+=p.vy;if(p.alpha<p.maxAlpha)p.alpha=Math.min(p.maxAlpha,p.alpha+0.008);const pulse=0.7+0.3*Math.sin(t*0.04+p.phase);ctx.beginPath();ctx.arc(p.x,p.y,p.r*pulse,0,Math.PI*2);ctx.fillStyle=p.hue===271?`hsla(271,80%,70%,${p.alpha})`:p.hue===171?`hsla(171,80%,60%,${p.alpha*0.85})`:`hsla(340,80%,65%,${p.alpha*0.7})`;ctx.fill();});
+    for(let i=0;i<particles.length;i++){for(let j=i+1;j<particles.length;j++){const pa=particles[i],pb=particles[j];const dx=pa.x-pb.x,dy=pa.y-pb.y;const dist=Math.sqrt(dx*dx+dy*dy);if(dist<LINK_DIST){const str=(1-dist/LINK_DIST)*Math.min(pa.alpha,pb.alpha)*0.55;ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.strokeStyle=`rgba(168,85,247,${str})`;ctx.lineWidth=0.5;ctx.stroke();}}}
+    const cg=ctx.createRadialGradient(CX,CY,0,CX,CY,90);cg.addColorStop(0,'rgba(168,85,247,0.10)');cg.addColorStop(1,'transparent');ctx.fillStyle=cg;ctx.beginPath();ctx.arc(CX,CY,90,0,Math.PI*2);ctx.fill();
     t++;if(!stopped)rafId=requestAnimationFrame(draw);
   }
   draw();
@@ -2834,5 +2943,440 @@ function updateLoginChips(){
   animate();
 })();
 </script>
+
+<!-- Manage Processes Modal -->
+<div id="manage-proc-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;width:95%;max-width:680px;max-height:90vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.25);display:flex;flex-direction:column;">
+    <div style="background:linear-gradient(135deg,#0f1923,#1a2e3b);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="color:#00c9a7;font-weight:800;font-size:16px;">✏️ Manage Processes</div>
+        <div style="color:#aaa;font-size:11px;margin-top:2px;">Add, edit or delete processes (SME only)</div>
+      </div>
+      <button onclick="closeManageProcesses()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;">✕</button>
+    </div>
+    <!-- Add New Process Form -->
+    <div style="padding:16px 20px;background:#f8fffe;border-bottom:1.5px solid #e0f5f0;">
+      <div style="font-size:12px;font-weight:700;color:#007a64;margin-bottom:10px;">➕ Add New Process</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input id="mp-proc-name" type="text" placeholder="Process Name (e.g. 1234567 - Client Name)" style="flex:2;min-width:180px;padding:8px 11px;border:1.5px solid #d0e8e0;border-radius:7px;font-size:12px;outline:none;">
+        <input id="mp-proc-uom" type="text" placeholder="UOM (e.g. VINs, Pages)" style="flex:1;min-width:100px;padding:8px 11px;border:1.5px solid #d0e8e0;border-radius:7px;font-size:12px;outline:none;">
+        <input id="mp-proc-target" type="number" placeholder="Target" min="0" style="width:80px;padding:8px 11px;border:1.5px solid #d0e8e0;border-radius:7px;font-size:12px;outline:none;">
+        <input id="mp-proc-tat" type="number" placeholder="TAT" min="0" style="width:70px;padding:8px 11px;border:1.5px solid #d0e8e0;border-radius:7px;font-size:12px;outline:none;">
+        <button onclick="addNewProcess()" style="background:linear-gradient(135deg,#00c9a7,#007a64);color:#fff;border:none;padding:8px 18px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">+ Add</button>
+      </div>
+    </div>
+    <!-- Search -->
+    <div style="padding:10px 20px;border-bottom:1px solid #eee;">
+      <input id="mp-search" type="text" placeholder="🔍 Search processes..." oninput="renderManageList()" style="width:100%;padding:8px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:12px;outline:none;box-sizing:border-box;">
+    </div>
+    <!-- Process List -->
+    <div id="mp-list" style="overflow-y:auto;flex:1;padding:10px 20px;"></div>
+    <!-- Footer -->
+    <div style="padding:12px 20px;border-top:1.5px solid #eee;display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="saveProcessesToFirebase()" style="background:linear-gradient(135deg,#00c9a7,#007a64);color:#fff;border:none;padding:9px 22px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;">💾 Save All Changes</button>
+      <button onclick="closeManageProcesses()" style="background:#f1f5f9;border:1.5px solid #ddd;color:#555;padding:9px 18px;border-radius:8px;font-size:12px;cursor:pointer;">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== MANAGE PROCESSES =====
+let mpEditIdx = -1;
+
+function openManageProcesses(){
+  mpEditIdx = -1;
+  document.getElementById('mp-search').value = '';
+  renderManageList();
+  const modal = document.getElementById('manage-proc-modal');
+  modal.style.display = 'flex';
+}
+
+function closeManageProcesses(){
+  document.getElementById('manage-proc-modal').style.display = 'none';
+}
+
+function renderManageList(){
+  const q = (document.getElementById('mp-search').value || '').toLowerCase();
+  const list = document.getElementById('mp-list');
+  const filtered = PROCESSES.map((p, i) => ({...p, _origIdx: i}))
+    .filter(p => !q || p.process.toLowerCase().includes(q));
+
+  if(!filtered.length){
+    list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;font-size:12px;">No processes found.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map((p, fi) => {
+    if(mpEditIdx === p._origIdx){
+      return `<div style="display:flex;gap:6px;align-items:center;padding:7px 0;border-bottom:1px solid #f0f5f8;flex-wrap:wrap;">
+        <input id="mp-edit-name" value="${escHtml(p.process)}" style="flex:2;min-width:150px;padding:6px 9px;border:1.5px solid #00c9a7;border-radius:6px;font-size:11.5px;outline:none;">
+        <input id="mp-edit-uom" value="${escHtml(p.uom||'')}" placeholder="UOM" style="width:80px;padding:6px 9px;border:1.5px solid #00c9a7;border-radius:6px;font-size:11.5px;outline:none;">
+        <input id="mp-edit-target" type="number" value="${p.target||0}" placeholder="Target" style="width:65px;padding:6px 9px;border:1.5px solid #00c9a7;border-radius:6px;font-size:11.5px;outline:none;">
+        <input id="mp-edit-tat" type="number" value="${p.tat||0}" placeholder="TAT" style="width:55px;padding:6px 9px;border:1.5px solid #00c9a7;border-radius:6px;font-size:11.5px;outline:none;">
+        <button onclick="saveEditProcess(${p._origIdx})" style="background:#00c9a7;color:#fff;border:none;padding:6px 13px;border-radius:6px;font-size:11.5px;cursor:pointer;font-weight:700;">✓ Save</button>
+        <button onclick="cancelEditProcess()" style="background:#eee;border:none;padding:6px 10px;border-radius:6px;font-size:11.5px;cursor:pointer;">✕</button>
+      </div>`;
+    }
+    return `<div style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid #f0f5f8;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:600;color:#0f1923;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(p.process)}</div>
+        <div style="font-size:10.5px;color:#8fa3b1;margin-top:1px;">${p.uom||'-'} · Target: ${p.target||0} · TAT: ${p.tat||0}</div>
+      </div>
+      <button onclick="startEditProcess(${p._origIdx})" style="background:#e8f4fd;border:1.5px solid #b3d4f0;color:#1565c0;padding:5px 11px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;">✏️ Edit</button>
+      <button onclick="deleteProcess(${p._origIdx})" style="background:#fef2f2;border:1.5px solid #fca5a5;color:#dc2626;padding:5px 11px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;">🗑 Delete</button>
+    </div>`;
+  }).join('');
+}
+
+function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function addNewProcess(){
+  const name = document.getElementById('mp-proc-name').value.trim();
+  const uom = document.getElementById('mp-proc-uom').value.trim();
+  const target = parseInt(document.getElementById('mp-proc-target').value) || 0;
+  const tat = parseInt(document.getElementById('mp-proc-tat').value) || 0;
+  if(!name){ showToast('⚠️ Process name is required!'); return; }
+  if(PROCESSES.find(p => p.process.toLowerCase() === name.toLowerCase())){ showToast('⚠️ Process already exists!'); return; }
+  PROCESSES.push({process: name, uom, target, tat});
+  PROCESS_MAP[name] = {process: name, uom, target, tat};
+  QUALITY_PROCESSES.push(name);
+  document.getElementById('mp-proc-name').value = '';
+  document.getElementById('mp-proc-uom').value = '';
+  document.getElementById('mp-proc-target').value = '';
+  document.getElementById('mp-proc-tat').value = '';
+  renderManageList();
+  showToast('✅ Process added! Click Save All Changes to persist.');
+}
+
+function startEditProcess(idx){
+  mpEditIdx = idx;
+  renderManageList();
+}
+
+function cancelEditProcess(){
+  mpEditIdx = -1;
+  renderManageList();
+}
+
+function saveEditProcess(idx){
+  const name = document.getElementById('mp-edit-name').value.trim();
+  const uom = document.getElementById('mp-edit-uom').value.trim();
+  const target = parseInt(document.getElementById('mp-edit-target').value) || 0;
+  const tat = parseInt(document.getElementById('mp-edit-tat').value) || 0;
+  if(!name){ showToast('⚠️ Process name cannot be empty!'); return; }
+  const oldName = PROCESSES[idx].process;
+  delete PROCESS_MAP[oldName];
+  PROCESSES[idx] = {process: name, uom, target, tat};
+  PROCESS_MAP[name] = {process: name, uom, target, tat};
+  const qi = QUALITY_PROCESSES.indexOf(oldName);
+  if(qi >= 0) QUALITY_PROCESSES[qi] = name;
+  mpEditIdx = -1;
+  renderManageList();
+  showToast('✅ Process updated! Click Save All Changes to persist.');
+}
+
+function deleteProcess(idx){
+  const name = PROCESSES[idx].process;
+  if(!confirm('Delete process: "' + name + '"?')) return;
+  delete PROCESS_MAP[name];
+  PROCESSES.splice(idx, 1);
+  const qi = QUALITY_PROCESSES.indexOf(name);
+  if(qi >= 0) QUALITY_PROCESSES.splice(qi, 1);
+  mpEditIdx = -1;
+  renderManageList();
+  showToast('🗑 Process deleted! Click Save All Changes to persist.');
+}
+
+async function saveProcessesToFirebase(){
+  try{
+    const json = JSON.stringify(PROCESSES);
+    if(window._fbReady){ await fbSet('drt_processes', json); }
+    try{ localStorage.setItem('drt_processes', json); }catch(e){}
+    showToast('✅ All process changes saved successfully!');
+  }catch(e){
+    showToast('⚠️ Save failed: ' + e.message);
+  }
+}
+
+// Load custom processes from Firebase/localStorage on startup
+async function loadCustomProcesses(){
+  try{
+    let saved = null;
+    if(window._fbReady){ saved = await fbGetWithTimeout('drt_processes', 3000); }
+    if(!saved){ try{ saved = localStorage.getItem('drt_processes'); }catch(e){} }
+    if(saved){
+      const arr = typeof saved === 'string' ? JSON.parse(saved) : saved;
+      if(Array.isArray(arr) && arr.length > 0){
+        PROCESSES.length = 0;
+        arr.forEach(p => { PROCESSES.push(p); PROCESS_MAP[p.process] = p; });
+      }
+    }
+  }catch(e){ console.warn('loadCustomProcesses:', e); }
+}
+
+// Call on app init — patch initApp
+const _origInitApp = typeof initApp === 'function' ? initApp : null;
+window.addEventListener('DOMContentLoaded', async () => {
+  await loadCustomProcesses();
+  await loadCustomMembers();
+});
+</script>
+
+
+<!-- Manage Members Modal -->
+<div id="manage-members-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;">
+  <div style="background:#fff;border-radius:14px;width:95%;max-width:750px;max-height:90vh;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.25);display:flex;flex-direction:column;">
+    <div style="background:linear-gradient(135deg,#0f1923,#1a2e3b);padding:18px 22px;display:flex;align-items:center;justify-content:space-between;">
+      <div>
+        <div style="color:#00c9a7;font-weight:800;font-size:16px;">👥 Manage Members</div>
+        <div style="color:#aaa;font-size:11px;margin-top:2px;">Add, edit or remove team members (SME only)</div>
+      </div>
+      <button onclick="closeManageMembers()" style="background:rgba(255,255,255,0.1);border:none;color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:16px;">✕</button>
+    </div>
+    <!-- Add New Member Form -->
+    <div style="padding:16px 20px;background:#f8fffe;border-bottom:1.5px solid #e0f5f0;">
+      <div style="font-size:12px;font-weight:700;color:#007a64;margin-bottom:10px;">➕ Add New Member</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <label style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;">Resource ID</label>
+          <input id="mm-id" type="text" placeholder="e.g. ICTE/1300" style="width:120px;padding:8px 11px;border:1.5px solid #d0e8e0;border-radius:7px;font-size:12px;outline:none;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <label style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;">Full Name</label>
+          <input id="mm-name" type="text" placeholder="e.g. Priya S" style="width:140px;padding:8px 11px;border:1.5px solid #d0e8e0;border-radius:7px;font-size:12px;outline:none;">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <label style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;">Designation</label>
+          <select id="mm-role" style="padding:8px 11px;border:1.5px solid #d0e8e0;border-radius:7px;font-size:12px;outline:none;background:#fff;">
+            <option value="Process Associate">Process Associate</option>
+            <option value="Senior Process Associate">Senior Process Associate</option>
+            <option value="Trainee Process Analyst">Trainee Process Analyst</option>
+            <option value="SME">SME</option>
+          </select>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:3px;">
+          <label style="font-size:10px;font-weight:700;color:#888;text-transform:uppercase;">Email</label>
+          <input id="mm-email" type="email" placeholder="email@i-constech.com" style="width:180px;padding:8px 11px;border:1.5px solid #d0e8e0;border-radius:7px;font-size:12px;outline:none;">
+        </div>
+        <button onclick="addNewMember()" style="background:linear-gradient(135deg,#00c9a7,#007a64);color:#fff;border:none;padding:8px 18px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;height:36px;">+ Add</button>
+      </div>
+    </div>
+    <!-- Search -->
+    <div style="padding:10px 20px;border-bottom:1px solid #eee;">
+      <input id="mm-search" type="text" placeholder="🔍 Search members..." oninput="renderMemberList()" style="width:100%;padding:8px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:12px;outline:none;box-sizing:border-box;">
+    </div>
+    <!-- Member List -->
+    <div id="mm-list" style="overflow-y:auto;flex:1;padding:10px 20px;"></div>
+    <!-- Footer -->
+    <div style="padding:12px 20px;border-top:1.5px solid #eee;display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:11px;color:#888;">Total: <strong id="mm-count">0</strong> members</div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="saveMembersToFirebase()" style="background:linear-gradient(135deg,#00c9a7,#007a64);color:#fff;border:none;padding:9px 22px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;">💾 Save All Changes</button>
+        <button onclick="closeManageMembers()" style="background:#f1f5f9;border:1.5px solid #ddd;color:#555;padding:9px 18px;border-radius:8px;font-size:12px;cursor:pointer;">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===== MANAGE MEMBERS =====
+let mmEditId = null;
+
+// Runtime members store — mirrors USER_ACCOUNTS but editable
+let RUNTIME_MEMBERS = null;
+
+function getRuntimeMembers(){
+  if(!RUNTIME_MEMBERS){
+    RUNTIME_MEMBERS = {};
+    Object.keys(USER_ACCOUNTS).forEach(id => {
+      RUNTIME_MEMBERS[id] = Object.assign({}, USER_ACCOUNTS[id]);
+    });
+  }
+  return RUNTIME_MEMBERS;
+}
+
+function openManageMembers(){
+  mmEditId = null;
+  document.getElementById('mm-search').value = '';
+  renderMemberList();
+  document.getElementById('manage-members-modal').style.display = 'flex';
+}
+
+function closeManageMembers(){
+  document.getElementById('manage-members-modal').style.display = 'none';
+}
+
+function renderMemberList(){
+  const q = (document.getElementById('mm-search').value || '').toLowerCase();
+  const members = getRuntimeMembers();
+  const list = document.getElementById('mm-list');
+  const allIds = Object.keys(members);
+  const filtered = allIds.filter(id =>
+    !q ||
+    id.toLowerCase().includes(q) ||
+    (members[id].name||'').toLowerCase().includes(q) ||
+    (members[id].role||'').toLowerCase().includes(q)
+  );
+
+  document.getElementById('mm-count').textContent = allIds.length;
+
+  const roleColors = {
+    'SME': '#7c3aed',
+    'Senior Process Associate': '#0d47a1',
+    'Process Associate': '#007a64',
+    'Trainee Process Analyst': '#b45309'
+  };
+
+  if(!filtered.length){
+    list.innerHTML = '<div style="text-align:center;color:#aaa;padding:20px;font-size:12px;">No members found.</div>';
+    return;
+  }
+
+  const roleOptions = ['Process Associate','Senior Process Associate','Trainee Process Analyst','SME']
+    .map(r => `<option value="${r}">${r}</option>`).join('');
+
+  list.innerHTML = filtered.map(id => {
+    const m = members[id];
+    const roleColor = roleColors[m.role] || '#555';
+    if(mmEditId === id){
+      return `<div style="display:flex;gap:6px;align-items:center;padding:9px 0;border-bottom:1px solid #f0f5f8;flex-wrap:wrap;background:#f0fdf8;border-radius:8px;padding:10px;">
+        <input id="mm-edit-id" value="${escMem(id)}" style="width:110px;padding:6px 9px;border:1.5px solid #00c9a7;border-radius:6px;font-size:11.5px;outline:none;" placeholder="Resource ID">
+        <input id="mm-edit-name" value="${escMem(m.name||'')}" style="width:130px;padding:6px 9px;border:1.5px solid #00c9a7;border-radius:6px;font-size:11.5px;outline:none;" placeholder="Full Name">
+        <select id="mm-edit-role" style="padding:6px 9px;border:1.5px solid #00c9a7;border-radius:6px;font-size:11.5px;outline:none;background:#fff;">${['Process Associate','Senior Process Associate','Trainee Process Analyst','SME'].map(r=>`<option value="${r}"${r===m.role?' selected':''}>${r}</option>`).join('')}</select>
+        <input id="mm-edit-email" value="${escMem(m.email||'')}" style="width:170px;padding:6px 9px;border:1.5px solid #00c9a7;border-radius:6px;font-size:11.5px;outline:none;" placeholder="email@i-constech.com">
+        <button onclick="saveEditMember('${id}')" style="background:#00c9a7;color:#fff;border:none;padding:6px 13px;border-radius:6px;font-size:11.5px;cursor:pointer;font-weight:700;">✓ Save</button>
+        <button onclick="cancelEditMember()" style="background:#eee;border:none;padding:6px 10px;border-radius:6px;font-size:11.5px;cursor:pointer;">✕</button>
+      </div>`;
+    }
+    return `<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f0f5f8;">
+      <div style="background:${roleColor}20;border:1.5px solid ${roleColor}40;border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;color:${roleColor};white-space:nowrap;min-width:60px;text-align:center;">${escMem(id)}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12.5px;font-weight:700;color:#0f1923;">${escMem(m.name||'')}</div>
+        <div style="font-size:10.5px;color:${roleColor};font-weight:600;">${escMem(m.role||'')}${m.email ? ' · <span style="color:#8fa3b1;font-weight:400;">'+escMem(m.email)+'</span>' : ''}</div>
+      </div>
+      <button onclick="startEditMember('${id}')" style="background:#e8f4fd;border:1.5px solid #b3d4f0;color:#1565c0;padding:5px 11px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;white-space:nowrap;">✏️ Edit</button>
+      <button onclick="deleteMember('${id}')" style="background:#fef2f2;border:1.5px solid #fca5a5;color:#dc2626;padding:5px 11px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;white-space:nowrap;">🗑 Delete</button>
+    </div>`;
+  }).join('');
+}
+
+function escMem(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function addNewMember(){
+  const id = document.getElementById('mm-id').value.trim().toUpperCase();
+  const name = document.getElementById('mm-name').value.trim();
+  const role = document.getElementById('mm-role').value;
+  const email = document.getElementById('mm-email').value.trim();
+  if(!id){ showToast('⚠️ Resource ID is required!'); return; }
+  if(!name){ showToast('⚠️ Name is required!'); return; }
+  const members = getRuntimeMembers();
+  if(members[id]){ showToast('⚠️ Resource ID already exists!'); return; }
+  members[id] = { name, role, email };
+  USER_ACCOUNTS[id] = { name, role };
+  if(!NAMES.includes(name)) NAMES.push(name);
+  if(!SME_VIEW_ORDER.includes(name) && role !== 'SME') SME_VIEW_ORDER.push(name);
+  document.getElementById('mm-id').value = '';
+  document.getElementById('mm-name').value = '';
+  document.getElementById('mm-email').value = '';
+  renderMemberList();
+  populateNameDropdowns();
+  showToast('✅ Member added! Click Save All Changes to persist.');
+}
+
+function startEditMember(id){
+  mmEditId = id;
+  renderMemberList();
+  setTimeout(()=>{ const el=document.getElementById('mm-edit-name'); if(el) el.focus(); }, 100);
+}
+
+function cancelEditMember(){
+  mmEditId = null;
+  renderMemberList();
+}
+
+function saveEditMember(oldId){
+  const newId = document.getElementById('mm-edit-id').value.trim().toUpperCase();
+  const name = document.getElementById('mm-edit-name').value.trim();
+  const role = document.getElementById('mm-edit-role').value;
+  const email = document.getElementById('mm-edit-email').value.trim();
+  if(!newId){ showToast('⚠️ Resource ID cannot be empty!'); return; }
+  if(!name){ showToast('⚠️ Name cannot be empty!'); return; }
+  const members = getRuntimeMembers();
+  const oldName = members[oldId].name;
+  // Remove old
+  delete members[oldId];
+  delete USER_ACCOUNTS[oldId];
+  // Add new
+  members[newId] = { name, role, email };
+  USER_ACCOUNTS[newId] = { name, role };
+  // Update NAMES
+  const ni = NAMES.indexOf(oldName);
+  if(ni >= 0) NAMES[ni] = name; else if(!NAMES.includes(name)) NAMES.push(name);
+  // Update SME_VIEW_ORDER
+  const si = SME_VIEW_ORDER.indexOf(oldName);
+  if(si >= 0) SME_VIEW_ORDER[si] = name;
+  else if(!SME_VIEW_ORDER.includes(name) && role !== 'SME') SME_VIEW_ORDER.push(name);
+  mmEditId = null;
+  renderMemberList();
+  populateNameDropdowns();
+  showToast('✅ Member updated! Click Save All Changes to persist.');
+}
+
+function deleteMember(id){
+  const members = getRuntimeMembers();
+  const name = members[id] ? members[id].name : id;
+  if(!confirm('Delete member: "' + name + '" (' + id + ')?
+
+Note: Their existing report data will NOT be deleted.')) return;
+  delete members[id];
+  delete USER_ACCOUNTS[id];
+  const ni = NAMES.indexOf(name);
+  if(ni >= 0) NAMES.splice(ni, 1);
+  const si = SME_VIEW_ORDER.indexOf(name);
+  if(si >= 0) SME_VIEW_ORDER.splice(si, 1);
+  mmEditId = null;
+  renderMemberList();
+  populateNameDropdowns();
+  showToast('🗑 Member deleted! Click Save All Changes to persist.');
+}
+
+async function saveMembersToFirebase(){
+  try{
+    const members = getRuntimeMembers();
+    const json = JSON.stringify(members);
+    if(window._fbReady){ await fbSet('drt_members', json); }
+    try{ localStorage.setItem('drt_members', json); }catch(e){}
+    showToast('✅ All member changes saved successfully!');
+  }catch(e){
+    showToast('⚠️ Save failed: ' + e.message);
+  }
+}
+
+async function loadCustomMembers(){
+  try{
+    let saved = null;
+    if(window._fbReady){ saved = await fbGetWithTimeout('drt_members', 3000); }
+    if(!saved){ try{ saved = localStorage.getItem('drt_members'); }catch(e){} }
+    if(saved){
+      const obj = typeof saved === 'string' ? JSON.parse(saved) : saved;
+      if(obj && typeof obj === 'object' && Object.keys(obj).length > 0){
+        RUNTIME_MEMBERS = {};
+        Object.keys(obj).forEach(id => {
+          const m = obj[id];
+          RUNTIME_MEMBERS[id] = m;
+          USER_ACCOUNTS[id] = { name: m.name, role: m.role };
+        });
+        // Rebuild NAMES from saved members
+        NAMES.length = 0;
+        Object.values(obj).forEach(m => { if(m.name && !NAMES.includes(m.name)) NAMES.push(m.name); });
+        // Rebuild SME_VIEW_ORDER (non-SME members only)
+        SME_VIEW_ORDER.length = 0;
+        Object.values(obj).forEach(m => { if(m.role !== 'SME' && m.name && !SME_VIEW_ORDER.includes(m.name)) SME_VIEW_ORDER.push(m.name); });
+      }
+    }
+  }catch(e){ console.warn('loadCustomMembers:', e); }
+}
+</script>
+
 </body>
 </html>
