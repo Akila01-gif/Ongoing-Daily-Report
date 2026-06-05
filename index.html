@@ -576,7 +576,7 @@ input[type=number]{-moz-appearance:textfield}
           <button class="btn-success" style="background:linear-gradient(135deg,#e67e22,#d35400);box-shadow:0 3px 10px rgba(230,126,34,0.35)" onclick="openManageProcesses()">✏️ Manage Processes</button>
           <button class="btn-success" style="background:linear-gradient(135deg,#0d47a1,#1565c0);box-shadow:0 3px 10px rgba(21,101,192,0.35)" onclick="openManageMembers()">👥 Manage Members</button>
         </div>
-        <div class="access-note" id="access-note" style="display:none">✏️ You can view all team reports and edit or delete your own entries. For changes to others' reports, contact the SME.</div>
+        <div class="access-note" id="access-note" style="display:none">✏️ You can view all team's current date reports. You can edit or delete only your own entries.</div>
         <div id="resource-dl-bar" style="display:none;gap:7px;align-items:center;flex-wrap:wrap;background:#fff8f0;border:1.5px solid rgba(249,115,22,0.25);border-radius:10px;padding:10px 14px;margin-bottom:.9rem;">
           <span style="font-size:11px;font-weight:700;color:#c44b00;">📥 My Export:</span>
           <button class="btn-success" onclick="exportMyExcel()">⬇ Download Excel</button>
@@ -1203,7 +1203,7 @@ function launchApp(uid){
           document.getElementById('export-from').value=`${y}-${m}-01`;
           document.getElementById('export-to').value=now.toISOString().split('T')[0];
         } else {
-          smeBar.style.display='none';if(accessNote){accessNote.style.display='flex';accessNote.innerHTML='✏️ You can view all team reports and edit or delete your own entries. For changes to others\' reports, contact the SME.';}
+          smeBar.style.display='none';if(accessNote){accessNote.style.display='flex';accessNote.innerHTML='✏️ You can view all team\'s current date reports. You can edit or delete only your own entries.';}
           if(resourceBar)resourceBar.style.display='flex';
         }
         populateNameDropdowns();initApp().then(()=>{startRealtimeSync();showSyncStatus();});switchTab('add');
@@ -1493,13 +1493,13 @@ function populateNameDropdowns(){
   const expName=document.getElementById('export-name');
   if(expName&&isSME){expName.innerHTML='<option value="">All Members</option>';NAMES.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;expName.appendChild(o);});}
 }
-async function initApp(){await loadData();addRow();addRow();addRow();renderView();renderSummary();updateTotals('rows-body');updateLoginChips();checkStorageUsage();}
+async function initApp(){await loadData();addRow();addRow();addRow();const _fd=document.getElementById('filter-date');if(_fd&&!_fd.value)_fd.value=new Date().toISOString().split('T')[0];renderView();renderSummary();updateTotals('rows-body');updateLoginChips();checkStorageUsage();}
 
 function switchTab(t){
   document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['add','view','monthly','quality','rating','summary'][i]===t));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
-  if(t==='view'){const fd=document.getElementById('filter-date');if(fd)fd.value='';renderView();}
+  if(t==='view'){const fd=document.getElementById('filter-date');if(fd)fd.value=new Date().toISOString().split('T')[0];renderView();}
   if(t==='monthly'){initMonthlyFilters();renderMonthly();}
   if(t==='quality')initQualityFilters();
   if(t==='rating')initRatingFilters();
@@ -2135,7 +2135,7 @@ function exportPDF(){
   const isSME=(currentUserRole==='SME');const{jsPDF}=window.jspdf,doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
   let filteredEntries;
   if(isSME){const fromD=document.getElementById('export-from').value;const toD=document.getElementById('export-to').value;const filterName=document.getElementById('export-name').value;filteredEntries=data.filter(e=>{if(filterName&&e.name!==filterName)return false;if(fromD&&e.date<fromD)return false;if(toD&&e.date>toD)return false;return true;});}
-  else{filteredEntries=getFiltered().filter(e=>e.name===currentUserName);}
+  else{filteredEntries=getFiltered();}
   const rows=[];filteredEntries.forEach(e=>(e.rows||[]).forEach(r=>rows.push([fmtDate(e.date),e.name,e.role,r.process,r.uom,r.target||'-',r.tat||'-',r.count||'-',r.duration||'-',r.percentage,r.remarks||'-'])));
   doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(15,25,35);doc.text('Daily Work Task Report — i-Cons Technologies',14,14);
   doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(120,120,120);doc.text(`Exported by: ${currentUserName} (${currentUserRole})   |   Date: ${new Date().toLocaleDateString('en-GB')}`,14,20);
@@ -2895,7 +2895,7 @@ selectUserType('existing');initQuotes();updateLoginChips();
       if(!isSME){if(fRole){fRole.value=currentUserRole;fRole.disabled=true;}}else{if(fRole)fRole.disabled=false;}
       const smeBar=document.getElementById('sme-dl-bar');const accessNote=document.getElementById('access-note');const resourceBar=document.getElementById('resource-dl-bar');
       if(isSME){if(smeBar)smeBar.style.display='flex';if(accessNote)accessNote.style.display='none';if(resourceBar)resourceBar.style.display='none';}
-      else{if(smeBar)smeBar.style.display='none';if(accessNote){accessNote.style.display='flex';accessNote.innerHTML='✏️ You can view all team reports and edit or delete your own entries. For changes to others\' reports, contact the SME.';}if(resourceBar)resourceBar.style.display='flex';}
+      else{if(smeBar)smeBar.style.display='none';if(accessNote){accessNote.style.display='flex';accessNote.innerHTML='✏️ You can view all team\'s current date reports. You can edit or delete only your own entries.';}if(resourceBar)resourceBar.style.display='flex';}
       document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
       const ratingTab=document.querySelector('.tab[onclick*="rating"]');
       if(ratingTab) ratingTab.style.display=isSME?'':'none';
