@@ -576,7 +576,7 @@ input[type=number]{-moz-appearance:textfield}
           <button class="btn-success" style="background:linear-gradient(135deg,#e67e22,#d35400);box-shadow:0 3px 10px rgba(230,126,34,0.35)" onclick="openManageProcesses()">✏️ Manage Processes</button>
           <button class="btn-success" style="background:linear-gradient(135deg,#0d47a1,#1565c0);box-shadow:0 3px 10px rgba(21,101,192,0.35)" onclick="openManageMembers()">👥 Manage Members</button>
         </div>
-        <div class="access-note" id="access-note" style="display:none">✏️ You can view all team's current date reports. You can edit or delete only your own entries.</div>
+        <div class="access-note" id="access-note" style="display:none">✏️ You can view all team reports in order. You can edit or delete only your own entries.</div>
         <div id="resource-dl-bar" style="display:none;gap:7px;align-items:center;flex-wrap:wrap;background:#fff8f0;border:1.5px solid rgba(249,115,22,0.25);border-radius:10px;padding:10px 14px;margin-bottom:.9rem;">
           <span style="font-size:11px;font-weight:700;color:#c44b00;">📥 My Export:</span>
           <button class="btn-success" onclick="exportMyExcel()">⬇ Download Excel</button>
@@ -889,6 +889,7 @@ input[type=number]{-moz-appearance:textfield}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 
 <script>
 // ══════════════════════════════════════════════════════════════════
@@ -1201,7 +1202,7 @@ function launchApp(uid){
           document.getElementById('export-from').value=`${y}-${m}-01`;
           document.getElementById('export-to').value=now.toISOString().split('T')[0];
         } else {
-          smeBar.style.display='none';if(accessNote){accessNote.style.display='flex';accessNote.innerHTML='✏️ You can view all team\'s current date reports. You can edit or delete only your own entries.';}
+          smeBar.style.display='none';if(accessNote){accessNote.style.display='flex';accessNote.innerHTML='✏️ You can view all team reports in order. You can edit or delete only your own entries.';}
           if(resourceBar)resourceBar.style.display='flex';
         }
         populateNameDropdowns();initApp().then(()=>{startRealtimeSync();showSyncStatus();});switchTab('add');
@@ -1497,7 +1498,7 @@ function switchTab(t){
   document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['add','view','monthly','quality','rating','summary'][i]===t));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
-  if(t==='view'){const fd=document.getElementById('filter-date');if(fd)fd.value=new Date().toISOString().split('T')[0];renderView();}
+  if(t==='view'){const fd=document.getElementById('filter-date');if(fd&&!fd.value)fd.value=new Date().toISOString().split('T')[0];renderView();}
   if(t==='monthly'){initMonthlyFilters();renderMonthly();}
   if(t==='quality')initQualityFilters();
   if(t==='rating')initRatingFilters();
@@ -1673,18 +1674,31 @@ function getProcessTextColor(procName){
 
 function renderView(){
   const isSME=(currentUserRole==='SME');
-  const rows=[];getFiltered().forEach(e=>(e.rows||[]).forEach(r=>rows.push({...r,date:e.date,name:e.name,role:e.role,eid:e.id})));
   const tb=document.getElementById('view-body');const tf=document.getElementById('view-tfoot');
+  // Group entries by date, sort within each date by SME_VIEW_ORDER, then flatten
+  const entries=getFiltered();
+  const byDate={};
+  entries.forEach(e=>{if(!byDate[e.date])byDate[e.date]=[];byDate[e.date].push(e);});
+  const sortedDates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+  sortedDates.forEach(d=>{
+    byDate[d].sort((a,b)=>{
+      const ai=SME_VIEW_ORDER.indexOf(a.name),bi=SME_VIEW_ORDER.indexOf(b.name);
+      return(ai===-1?999:ai)-(bi===-1?999:bi);
+    });
+  });
+  const rows=[];
+  sortedDates.forEach(d=>byDate[d].forEach(e=>(e.rows||[]).forEach(r=>rows.push({...r,date:e.date,name:e.name,role:e.role,eid:e.id}))));
   if(!rows.length){tb.innerHTML='<tr><td colspan="12" class="empty">📭 No records found.</td></tr>';if(tf)tf.innerHTML='';return;}
-  tb.innerHTML=rows.map(r=>{
-    const rowBg=getProcessRowStyle(r.process);const procColor=getProcessTextColor(r.process);
-    const isMyRow=(r.name===currentUserName);
-    // Highlight own rows with a subtle left border accent
-    const myHighlight=isMyRow?'border-left:3px solid var(--teal);background:#fff8f0 !important;':'border-left:3px solid transparent;';
-    const nameStyle=isMyRow?'font-weight:800;color:#e85d04;white-space:nowrap;text-align:center':'font-weight:700;white-space:nowrap;text-align:center';
-    return`<tr style="${rowBg}${myHighlight}">
-<td style="white-space:nowrap;font-weight:700;font-size:11px;text-align:center">${fmtDate(r.date)}</td>
-<td style="${nameStyle}">${r.name}${isMyRow?'<span style="font-size:9px;background:var(--teal);color:#fff;border-radius:4px;padding:1px 5px;margin-left:4px;vertical-align:middle">You</span>':''}</td>
+  let html='';
+  let allDur=0;const allPcts=[];
+  rows.forEach(r=>{allDur+=parseFloat(r.duration)||0;const p=parseFloat(r.percentage);if(!isNaN(p)&&p>0)allPcts.push(p);});
+  rows.forEach(r=>{
+      const rowBg=getProcessRowStyle(r.process);const procColor=getProcessTextColor(r.process);
+      const isMyRow=(r.name===currentUserName);
+      const myHighlight=isMyRow?'border-left:3px solid var(--teal);background:#fff8f0 !important;':'border-left:3px solid transparent;';
+      html+=`<tr style="${rowBg}${myHighlight}">
+<td style="white-space:nowrap;font-weight:700;font-size:11px;text-align:center;color:#0a0a0a">${fmtDate(r.date)}</td>
+<td style="font-weight:${isMyRow?'800':'700'};color:${isMyRow?'#e85d04':'#0a0a0a'};white-space:nowrap;text-align:center;font-size:11px">${r.name}</td>
 <td style="text-align:center">${rolePill(r.role)}</td>
 <td style="font-size:11px;max-width:200px;text-align:center;${procColor}">${r.process}</td>
 <td style="font-size:11px;text-align:center">${r.uom||'-'}</td>
@@ -1698,9 +1712,9 @@ function renderView(){
   ${(isSME||isMyRow)?`<button class="btn-warn" style="padding:4px 10px;font-size:10px" onclick="openEdit(${r.eid})">✏️</button><button class="btn-danger" style="padding:4px 10px;font-size:10px;margin-left:3px" onclick="deleteEntry(${r.eid})">🗑</button>`:'<span style="color:#ccc;font-size:10px">-</span>'}
 </td>
 </tr>`;
-  }).join('');
+  });
+  tb.innerHTML=html;
   if(tf){
-    let allDur=0;const allPcts=[];rows.forEach(r=>{allDur+=parseFloat(r.duration)||0;const p=parseFloat(r.percentage);if(!isNaN(p)&&p>0)allPcts.push(p);});
     const grandAvg=allPcts.length?(allPcts.reduce((a,b)=>a+b,0)/allPcts.length).toFixed(1)+'%': '-';
     tf.innerHTML=`<tr><td colspan="8" style="text-align:right;padding-right:18px;letter-spacing:.08em;font-size:10px;color:var(--teal-light);text-transform:uppercase">Grand Total</td><td style="text-align:center"><span class="vt-val">${allDur.toFixed(2)} h</span></td><td style="text-align:center"><span class="vt-val">${grandAvg}</span></td><td colspan="2"></td></tr>`;
   }
@@ -1988,21 +2002,21 @@ function exportCSV(){
   showToast('⬇ CSV exported!');
 }
 
-function exportExcelSME(){
+async function exportExcelSME(){
   if(currentUserRole!=='SME'){showToast('⛔ SME access only.');return;}
   const fromD=document.getElementById('export-from').value;const toD=document.getElementById('export-to').value;const filterName=document.getElementById('export-name').value;
   let entries=data.filter(e=>{if(filterName&&e.name!==filterName)return false;if(fromD&&e.date<fromD)return false;if(toD&&e.date>toD)return false;return true;});
   entries.sort((a,b)=>{const dc=a.date.localeCompare(b.date);if(dc!==0)return dc;const ai=SME_VIEW_ORDER.indexOf(a.name),bi=SME_VIEW_ORDER.indexOf(b.name);return(ai===-1?999:ai)-(bi===-1?999:bi);});
-  buildStyledXlsx(entries,filterName?filterName.replace(/ /g,'_'):'All_Members',fromD,toD);showToast('⬇ Excel report exported!');
+  await buildStyledXlsx(entries,filterName?filterName.replace(/ /g,'_'):'All_Members',fromD,toD);showToast('⬇ Excel report exported!');
 }
 
-function exportMyExcel(){
+async function exportMyExcel(){
   const entries=data.filter(e=>e.name===currentUserName);entries.sort((a,b)=>a.date.localeCompare(b.date));
-  buildStyledXlsx(entries,currentUserName.replace(/ /g,'_'),'','');showToast('⬇ My Excel exported!');
+  await buildStyledXlsx(entries,currentUserName.replace(/ /g,'_'),'','');showToast('⬇ My Excel exported!');
 }
 
 // ══ SAVE DAILY REPORT (today's data for all members) ══
-function saveDailyReport(){
+async function saveDailyReport(){
   if(currentUserRole!=='SME'){showToast('⛔ SME access only.');return;}
   const today=new Date().toISOString().split('T')[0];
   const fromD=document.getElementById('export-from').value||today;
@@ -2017,7 +2031,7 @@ function saveDailyReport(){
   if(!entries.length){showToast('⚠️ No data found for the selected date range.');return;}
   entries.sort((a,b)=>{const dc=a.date.localeCompare(b.date);if(dc!==0)return dc;const ai=SME_VIEW_ORDER.indexOf(a.name),bi=SME_VIEW_ORDER.indexOf(b.name);return(ai===-1?999:ai)-(bi===-1?999:bi);});
   const label=(fromD===toD)?fromD:`${fromD}_to_${toD}`;
-  buildStyledXlsx(entries,filterName?filterName.replace(/ /g,'_'):'All_Members',fromD,toD);
+  await buildStyledXlsx(entries,filterName?filterName.replace(/ /g,'_'):'All_Members',fromD,toD);
   showToast(`💾 Daily report saved — ${label}!`);
 }
 
@@ -2070,26 +2084,186 @@ function getExcelCellStyle(procName,isAlt,isProcess){
   return base;
 }
 
-function buildStyledXlsx(entries,label,fromD,toD){
-  const XLSX=window.XLSX;const headers=['Date','Name','Process','UOM','Target','TAT','Count','Duration','Percentage','Remarks'];const colWidths=[12,20,38,8,8,6,8,10,12,18];
-  const dataRows=[];const dataRowProcesses=[];
-  entries.forEach(e=>{(e.rows||[]).forEach(r=>{const pctRaw=r.percentage||'';const pctNum=parseFloat(pctRaw);dataRows.push([fmtDate(e.date),e.name,r.process||'',r.uom||'',r.target!==undefined&&r.target!==''?Number(r.target)||0:'',r.tat!==undefined&&r.tat!==''?Number(r.tat)||0:'',r.count!==undefined&&r.count!==''?Number(r.count)||0:'',r.duration!==undefined&&r.duration!==''?Number(r.duration)||0:'',isNaN(pctNum)?'':pctNum/100,r.remarks||'']);dataRowProcesses.push(r.process||'');});});
-  let allDur=0;const allPcts=[];entries.forEach(e=>(e.rows||[]).forEach(r=>{allDur+=parseFloat(r.duration)||0;const p=parseFloat(r.percentage);if(!isNaN(p)&&p>0)allPcts.push(p);}));
-  const grandAvgNum=allPcts.length?(allPcts.reduce((a,b)=>a+b,0)/allPcts.length)/100:0;
-  const sheetData=[headers,...dataRows,Array(10).fill(''),['GRAND TOTAL','','','','','','',allDur,grandAvgNum,'']];
-  const ws=XLSX.utils.aoa_to_sheet(sheetData);ws['!cols']=colWidths.map(w=>({wch:w}));
-  const totalRows=sheetData.length;const grandTotalRowIdx=totalRows-1;
-  const headerStyle={font:{bold:true,color:{rgb:'FFFFFFFF'},sz:10},fill:{fgColor:{rgb:'FF1A1A2E'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:{top:{style:'thin',color:{rgb:'FF00C9A7'}},bottom:{style:'thin',color:{rgb:'FF00C9A7'}},left:{style:'thin',color:{rgb:'FF00C9A7'}},right:{style:'thin',color:{rgb:'FF00C9A7'}}}};
-  const grandStyle={font:{bold:true,sz:10,color:{rgb:'FFFFFFFF'}},fill:{fgColor:{rgb:'FF00A88C'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'medium',color:{rgb:'FF00C9A7'}},bottom:{style:'medium',color:{rgb:'FF00C9A7'}},left:{style:'thin',color:{rgb:'FF00C9A7'}},right:{style:'thin',color:{rgb:'FF00C9A7'}}}};
-  const grandLabelStyle={font:{bold:true,sz:10,color:{rgb:'FFFFFFFF'}},fill:{fgColor:{rgb:'FF0F1923'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'medium',color:{rgb:'FF00C9A7'}},bottom:{style:'medium',color:{rgb:'FF00C9A7'}},left:{style:'medium',color:{rgb:'FF00C9A7'}},right:{style:'thin',color:{rgb:'FF00C9A7'}}}};
-  const cols='ABCDEFGHIJ';
-  cols.split('').forEach((c,ci)=>{const ref=c+'1';if(!ws[ref])ws[ref]={v:headers[ci],t:'s'};ws[ref].s=headerStyle;});
-  dataRows.forEach((_,ri)=>{const excelRow=ri+2;const procName=dataRowProcesses[ri];const isAlt=ri%2===1;cols.split('').forEach((c,ci)=>{const ref=c+excelRow;if(!ws[ref])ws[ref]={v:'',t:'s'};ws[ref].s=getExcelCellStyle(procName,isAlt,ci===2);if(ci===4||ci===5||ci===6){if(ws[ref].v!=='')ws[ref].t='n';}if(ci===7&&ws[ref].v!==''){ws[ref].t='n';ws[ref].z='0.00';}if(ci===8&&ws[ref].v!==''){ws[ref].t='n';ws[ref].z='0.00%';}});});
-  const gtRow=grandTotalRowIdx+1;cols.split('').forEach((c,ci)=>{const ref=c+gtRow;if(!ws[ref])ws[ref]={v:'',t:'s'};ws[ref].s=(ci===0)?grandLabelStyle:grandStyle;if(ci===7&&ws[ref].v!==''){ws[ref].t='n';ws[ref].z='0.00';}if(ci===8&&ws[ref].v!==''){ws[ref].t='n';ws[ref].z='0.00%';}});
-  ws['!rows']=[];ws['!rows'][0]={hpt:20};for(let i=1;i<totalRows-2;i++)ws['!rows'][i]={hpt:16};ws['!rows'][grandTotalRowIdx]={hpt:20};
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Daily Report');
-  const fname=`Daily_Report_${label}_${fromD||new Date().toISOString().split('T')[0]}.xlsx`;
-  XLSX.writeFile(wb,fname,{bookType:'xlsx',type:'binary',cellStyles:true});
+async function buildStyledXlsx(entries,label,fromD,toD){
+  const EXJ=window.ExcelJS;
+  if(!EXJ){showToast('⚠️ ExcelJS not loaded yet, please retry.');return;}
+
+  // ── Sort entries ──
+  const byDate={};
+  entries.forEach(e=>{if(!byDate[e.date])byDate[e.date]=[];byDate[e.date].push(e);});
+  const sortedDates=Object.keys(byDate).sort((a,b)=>a.localeCompare(b));
+  sortedDates.forEach(d=>{byDate[d].sort((a,b)=>{const ai=SME_VIEW_ORDER.indexOf(a.name),bi=SME_VIEW_ORDER.indexOf(b.name);return(ai===-1?999:ai)-(bi===-1?999:bi);});});
+
+  // ── Helpers ──
+  function numOrDash(v){const n=parseFloat(v);return isNaN(n)?'-':n;}
+  function pctVal(v){const n=parseFloat(v);return isNaN(n)?'-':+(n/100).toFixed(6);}
+  function blankOrVal(v){return(v===undefined||v===null||v==='')?'':String(v);}
+
+  // ── Process type detection ──
+  function procType(proc){
+    if(!proc)return'normal';
+    const p=proc.toLowerCase();
+    if(/leave|l\.o\.p|lop|permission|compensatory|casual|sick|absent|holiday/.test(p))return'leave';
+    if(/meeting|admin|training|trainning|automation|induction|briefing/.test(p))return'admin';
+    return'normal';
+  }
+
+  // ── Border helper ──
+  const thinSide={style:'thin',color:{argb:'FFD0D0D0'}};
+  const medSide ={style:'medium',color:{argb:'FF999999'}};
+  const thinBorder={top:thinSide,bottom:thinSide,left:thinSide,right:thinSide};
+  const medBorder ={top:medSide, bottom:medSide, left:medSide, right:medSide};
+  const faintBorder={top:{style:'thin',color:{argb:'FFEEEEEE'}},bottom:{style:'thin',color:{argb:'FFEEEEEE'}},left:{style:'thin',color:{argb:'FFEEEEEE'}},right:{style:'thin',color:{argb:'FFEEEEEE'}}};
+
+  // ── Workbook & sheet ──
+  const wb=new EXJ.Workbook();
+  const ws=wb.addWorksheet('Daily Report',{views:[{showGridLines:false}]});
+
+  // Column widths — Process column auto-sized from actual data
+  const maxProcLen=Math.max(
+    10, // min
+    ...entries.flatMap(e=>(e.rows||[]).map(r=>(r.process||'').length))
+  );
+  const procWidth=Math.min(Math.max(maxProcLen*1.1, 30), 70); // clamp 30–70
+  ws.columns=[
+    {width:14},
+    {width:24},
+    {width:procWidth},
+    {width:11},
+    {width:10},
+    {width:9},
+    {width:10},
+    {width:12},
+    {width:14},
+    {width:30}
+  ];
+
+  // ── Header row ──
+  const hdrRow=ws.addRow(['Date','Name','Process','UOM','Target','TAT','Count','Duration','Percentage','Remarks']);
+  hdrRow.height=22;
+  hdrRow.eachCell(cell=>{
+    cell.font={name:'Calibri',size:11,bold:true,color:{argb:'FFFFFFFF'}};
+    cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF2C1A1A'}};
+    cell.alignment={horizontal:'center',vertical:'middle',wrapText:false};
+    cell.border=medBorder;
+  });
+
+  // ── Data rows ──
+  let rowIdx=0;
+  let allDur=0;const allPcts=[];
+
+  sortedDates.forEach(d=>{
+    byDate[d].forEach(e=>{
+      (e.rows||[]).forEach(r=>{
+        const isAlt=rowIdx%2===0;
+        const fillColor=isAlt?'FFF5F5F5':'FFFFFFFF';
+        const ptype=procType(r.process||'');
+        const dur=numOrDash(r.duration);
+        const pct=pctVal(r.percentage);
+
+        const rowVals=[
+          fmtDate(e.date),
+          e.name||'',
+          r.process||'',
+          (r.uom===undefined||r.uom===null||r.uom==='')?'-':r.uom,
+          numOrDash(r.target),
+          numOrDash(r.tat),
+          numOrDash(r.count),
+          dur,
+          pct,
+          blankOrVal(r.remarks)
+        ];
+        const dataRow=ws.addRow(rowVals);
+        dataRow.height=17;
+
+        dataRow.eachCell({includeEmpty:true},(cell,colNum)=>{
+          cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:fillColor}};
+          cell.border=thinBorder;
+          cell.alignment={horizontal:'center',vertical:'middle',wrapText:(colNum===3||colNum===10)};
+
+          // Process column color coding
+          if(colNum===3){
+            const color=ptype==='leave'?'FFC0392B':ptype==='admin'?'FF1565C0':'FF1A1A1A';
+            cell.font={name:'Calibri',size:10,bold:true,color:{argb:color}};
+          } else {
+            cell.font={name:'Calibri',size:10,color:{argb:'FF1A1A1A'}};
+          }
+
+          // Number formats
+          if(colNum===8&&cell.value!=='-'){cell.numFmt='0.00';}
+          if(colNum===9&&cell.value!=='-'){cell.numFmt='0.00%';}
+        });
+
+        allDur+=parseFloat(r.duration)||0;
+        const p=parseFloat(r.percentage);if(!isNaN(p)&&p>0)allPcts.push(p);
+        rowIdx++;
+      });
+    });
+  });
+
+  // ── Total row ──
+  const grandAvg=allPcts.length?(allPcts.reduce((a,b)=>a+b,0)/allPcts.length)/100:0;
+  const totalRow=ws.addRow(['','','','','','','Total',allDur,grandAvg,'']);
+  totalRow.height=20;
+  totalRow.eachCell({includeEmpty:true},(cell,colNum)=>{
+    cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};
+    if(colNum<=6||colNum===10){
+      cell.border=faintBorder;
+      cell.font={name:'Calibri',size:10};
+    } else if(colNum===7){
+      cell.font={name:'Calibri',size:10,bold:true,color:{argb:'FF1A1A1A'}};
+      cell.alignment={horizontal:'center',vertical:'middle'};
+      cell.border=medBorder;
+    } else {
+      cell.font={name:'Calibri',size:10,bold:true,color:{argb:'FF1A1A1A'}};
+      cell.alignment={horizontal:'center',vertical:'middle'};
+      cell.border=medBorder;
+      if(colNum===8){cell.numFmt='0.00';}
+      if(colNum===9){cell.numFmt='0.00%';}
+    }
+  });
+
+  // ── Smart filename ──
+  // Determine if fromD–toD spans a whole calendar month
+  function buildFileName(fromD,toD){
+    const today=new Date();
+    const todayStr=today.toISOString().split('T')[0];
+    const effectiveFrom=fromD||todayStr;
+    const effectiveTo=toD||todayStr;
+
+    // Check if it's a whole month (from 1st to last day of same month)
+    const dFrom=new Date(effectiveFrom+'T00:00:00');
+    const dTo=new Date(effectiveTo+'T00:00:00');
+    const sameMonth=dFrom.getFullYear()===dTo.getFullYear()&&dFrom.getMonth()===dTo.getMonth();
+    const isFirstDay=dFrom.getDate()===1;
+    const lastDay=new Date(dTo.getFullYear(),dTo.getMonth()+1,0).getDate();
+    const isLastDay=dTo.getDate()===lastDay;
+    const isWholeMonth=sameMonth&&isFirstDay&&isLastDay;
+
+    if(isWholeMonth){
+      const monthName=dFrom.toLocaleString('en-GB',{month:'long'});
+      const year=dFrom.getFullYear();
+      return `ON-GOING REPORT (${monthName} ${year}).xlsx`;
+    }
+    // Single day
+    if(effectiveFrom===effectiveTo){
+      const d=new Date(effectiveFrom+'T00:00:00');
+      const dateStr=d.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+      return `ON-GOING REPORT (${dateStr}).xlsx`;
+    }
+    // Date range
+    const dF=new Date(effectiveFrom+'T00:00:00');
+    const dT=new Date(effectiveTo+'T00:00:00');
+    const strF=dF.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    const strT=dT.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    return `ON-GOING REPORT (${strF} - ${strT}).xlsx`;
+  }
+  const fname=buildFileName(fromD,toD);
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=fname;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
 }
 
 function exportMonthlyByDate(){
@@ -2897,7 +3071,7 @@ selectUserType('existing');initQuotes();updateLoginChips();
       if(!isSME){if(fRole){fRole.value=currentUserRole;fRole.disabled=true;}}else{if(fRole)fRole.disabled=false;}
       const smeBar=document.getElementById('sme-dl-bar');const accessNote=document.getElementById('access-note');const resourceBar=document.getElementById('resource-dl-bar');
       if(isSME){if(smeBar)smeBar.style.display='flex';if(accessNote)accessNote.style.display='none';if(resourceBar)resourceBar.style.display='none';}
-      else{if(smeBar)smeBar.style.display='none';if(accessNote){accessNote.style.display='flex';accessNote.innerHTML='✏️ You can view all team\'s current date reports. You can edit or delete only your own entries.';}if(resourceBar)resourceBar.style.display='flex';}
+      else{if(smeBar)smeBar.style.display='none';if(accessNote){accessNote.style.display='flex';accessNote.innerHTML='✏️ You can view all team reports in order. You can edit or delete only your own entries.';}if(resourceBar)resourceBar.style.display='flex';}
       document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
       const ratingTab=document.querySelector('.tab[onclick*="rating"]');
       if(ratingTab) ratingTab.style.display=isSME?'':'none';
@@ -3371,7 +3545,7 @@ async function loadCustomMembers(){
         });
         NAMES.length = 0;
         Object.values(obj).forEach(function(m){ if(m.name && !NAMES.includes(m.name)) NAMES.push(m.name); });
-        SME_VIEW_ORDER.length = 0;
+        // Preserve the hardcoded display order — only add new names not already in the list
         Object.values(obj).forEach(function(m){ if(m.role !== 'SME' && m.name && !SME_VIEW_ORDER.includes(m.name)) SME_VIEW_ORDER.push(m.name); });
       }
     }
