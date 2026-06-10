@@ -2266,45 +2266,172 @@ async function buildStyledXlsx(entries,label,fromD,toD){
   setTimeout(()=>URL.revokeObjectURL(url),5000);
 }
 
-function exportMonthlyByDate(){
+async function exportMonthlyByDate(){
   if(currentUserRole!=='SME'){showToast('⛔ SME access only.');return;}
-  const fromD=document.getElementById('export-from').value;const toD=document.getElementById('export-to').value;const filterName=document.getElementById('export-name').value;
+  const EXJ=window.ExcelJS;
+  if(!EXJ){showToast('⚠️ ExcelJS not loaded yet, please retry.');return;}
+  const fromD=document.getElementById('export-from').value;
+  const toD=document.getElementById('export-to').value;
+  const filterName=document.getElementById('export-name').value;
   let entries=data.filter(e=>{if(filterName&&e.name!==filterName)return false;if(fromD&&e.date<fromD)return false;if(toD&&e.date>toD)return false;return true;});
   if(!entries.length){showToast('⚠️ No data in selected range.');return;}
   entries.sort((a,b)=>{const dc=a.date.localeCompare(b.date);if(dc!==0)return dc;const ai=SME_VIEW_ORDER.indexOf(a.name),bi=SME_VIEW_ORDER.indexOf(b.name);return(ai===-1?999:ai)-(bi===-1?999:bi);});
   const byDate={};entries.forEach(e=>{if(!byDate[e.date])byDate[e.date]=[];byDate[e.date].push(e);});
-  const XLSX=window.XLSX;const headers=['Date','Name','Process','UOM','Target','TAT','Count','Duration','Percentage','Remarks'];const colWidths=[12,20,38,8,8,6,8,10,12,18];const cols='ABCDEFGHIJ';
-  const headerStyle={font:{bold:true,color:{rgb:'FFFFFFFF'},sz:10},fill:{fgColor:{rgb:'FF1A1A2E'}},alignment:{horizontal:'center',vertical:'center',wrapText:true},border:{top:{style:'thin',color:{rgb:'FF00C9A7'}},bottom:{style:'thin',color:{rgb:'FF00C9A7'}},left:{style:'thin',color:{rgb:'FF00C9A7'}},right:{style:'thin',color:{rgb:'FF00C9A7'}}}};
-  const grandStyle={font:{bold:true,sz:10,color:{rgb:'FFFFFFFF'}},fill:{fgColor:{rgb:'FF00A88C'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'medium',color:{rgb:'FF00C9A7'}},bottom:{style:'medium',color:{rgb:'FF00C9A7'}},left:{style:'thin',color:{rgb:'FF00C9A7'}},right:{style:'thin',color:{rgb:'FF00C9A7'}}}};
-  const grandLabelStyle={font:{bold:true,sz:10,color:{rgb:'FFFFFFFF'}},fill:{fgColor:{rgb:'FF0F1923'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'medium',color:{rgb:'FF00C9A7'}},bottom:{style:'medium',color:{rgb:'FF00C9A7'}},left:{style:'medium',color:{rgb:'FF00C9A7'}},right:{style:'thin',color:{rgb:'FF00C9A7'}}}};
-  const wb=XLSX.utils.book_new();
-  const summaryData=[['Date','Total Members','Total Tasks','Total Duration (h)','Avg Percentage']];
-  const summaryStyle={font:{bold:true,color:{rgb:'FFFFFFFF'},sz:10},fill:{fgColor:{rgb:'FF0F1923'}},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FF00C9A7'}},bottom:{style:'thin',color:{rgb:'FF00C9A7'}},left:{style:'thin',color:{rgb:'FF00C9A7'}},right:{style:'thin',color:{rgb:'FF00C9A7'}}}};
-  const summDataStyle={font:{sz:9},alignment:{horizontal:'center',vertical:'center'},border:{top:{style:'thin',color:{rgb:'FFDDDDDD'}},bottom:{style:'thin',color:{rgb:'FFDDDDDD'}},left:{style:'thin',color:{rgb:'FFDDDDDD'}},right:{style:'thin',color:{rgb:'FFDDDDDD'}}}};
-  Object.entries(byDate).forEach(([dateStr,dayEntries])=>{let dayDur=0;const dayPcts=[];const members=new Set();dayEntries.forEach(e=>{members.add(e.name);(e.rows||[]).forEach(r=>{dayDur+=parseFloat(r.duration)||0;const p=parseFloat(r.percentage);if(!isNaN(p))dayPcts.push(p);});});const dayAvg=dayPcts.length?(dayPcts.reduce((a,b)=>a+b,0)/dayPcts.length).toFixed(1)+'%': '-';summaryData.push([fmtDate(dateStr),members.size,(dayEntries.flatMap(e=>e.rows||[])).length,dayDur.toFixed(2),dayAvg]);});
-  const wsSummary=XLSX.utils.aoa_to_sheet(summaryData);wsSummary['!cols']=[{wch:14},{wch:16},{wch:14},{wch:18},{wch:16}];
-  'ABCDE'.split('').forEach((c,ci)=>{const ref=c+'1';if(!wsSummary[ref])wsSummary[ref]={v:summaryData[0][ci],t:'s'};wsSummary[ref].s=summaryStyle;});
-  summaryData.slice(1).forEach((_,ri)=>{const excelRow=ri+2;const isAlt=ri%2===1;'ABCDE'.split('').forEach(c=>{const ref=c+excelRow;if(!wsSummary[ref])wsSummary[ref]={v:'',t:'s'};wsSummary[ref].s=isAlt?{...summDataStyle,fill:{fgColor:{rgb:'FFF0FDF8'}}}:summDataStyle;});});
-  XLSX.utils.book_append_sheet(wb,wsSummary,'📋 Monthly Summary');
-  Object.entries(byDate).forEach(([dateStr,dayEntries])=>{
-    const dataRows=[];const dataRowProcesses=[];
-    dayEntries.forEach(e=>{(e.rows||[]).forEach(r=>{const pctNum=parseFloat(r.percentage||'');dataRows.push([fmtDate(e.date),e.name,r.process||'',r.uom||'',r.target!==undefined&&r.target!==''?Number(r.target)||0:'',r.tat!==undefined&&r.tat!==''?Number(r.tat)||0:'',r.count!==undefined&&r.count!==''?Number(r.count)||0:'',r.duration!==undefined&&r.duration!==''?Number(r.duration)||0:'',isNaN(pctNum)?'':pctNum/100,r.remarks||'']);dataRowProcesses.push(r.process||'');});});
-    let allDur=0;const allPcts=[];dayEntries.forEach(e=>(e.rows||[]).forEach(r=>{allDur+=parseFloat(r.duration)||0;const p=parseFloat(r.percentage);if(!isNaN(p)&&p>0)allPcts.push(p);}));
-    const grandAvgNum=allPcts.length?(allPcts.reduce((a,b)=>a+b,0)/allPcts.length)/100:0;
-    const sheetData=[headers,...dataRows,Array(10).fill(''),['GRAND TOTAL','','','','','','',allDur,grandAvgNum,'']];
-    const ws=XLSX.utils.aoa_to_sheet(sheetData);ws['!cols']=colWidths.map(w=>({wch:w}));
-    const totalRows=sheetData.length;const grandTotalRowIdx=totalRows-1;
-    cols.split('').forEach((c,ci)=>{const ref=c+'1';if(!ws[ref])ws[ref]={v:headers[ci],t:'s'};ws[ref].s=headerStyle;});
-    dataRows.forEach((_,ri)=>{const excelRow=ri+2;const procName=dataRowProcesses[ri];const isAlt=ri%2===1;cols.split('').forEach((c,ci)=>{const ref=c+excelRow;if(!ws[ref])ws[ref]={v:'',t:'s'};ws[ref].s=getExcelCellStyle(procName,isAlt,ci===2);if(ci===4||ci===5||ci===6){if(ws[ref].v!=='')ws[ref].t='n';}if(ci===7&&ws[ref].v!==''){ws[ref].t='n';ws[ref].z='0.00';}if(ci===8&&ws[ref].v!==''){ws[ref].t='n';ws[ref].z='0.00%';}});});
-    const gtRow=grandTotalRowIdx+1;cols.split('').forEach((c,ci)=>{const ref=c+gtRow;if(!ws[ref])ws[ref]={v:'',t:'s'};ws[ref].s=(ci===0)?grandLabelStyle:grandStyle;if(ci===7&&ws[ref].v!==''){ws[ref].t='n';ws[ref].z='0.00';}if(ci===8&&ws[ref].v!==''){ws[ref].t='n';ws[ref].z='0.00%';}});
-    ws['!rows']=[];ws['!rows'][0]={hpt:20};for(let i=1;i<totalRows-2;i++)ws['!rows'][i]={hpt:16};ws['!rows'][grandTotalRowIdx]={hpt:20};
-    const d=new Date(dateStr+'T00:00:00');const sheetName=String(d.getDate()).padStart(2,'0')+'-'+d.toLocaleString('en-GB',{month:'short'});
-    XLSX.utils.book_append_sheet(wb,ws,sheetName);
+  const sortedDates=Object.keys(byDate).sort((a,b)=>a.localeCompare(b));
+  sortedDates.forEach(d=>{byDate[d].sort((a,b)=>{const ai=SME_VIEW_ORDER.indexOf(a.name),bi=SME_VIEW_ORDER.indexOf(b.name);return(ai===-1?999:ai)-(bi===-1?999:bi);});});
+
+  // ── Shared style helpers (same as buildStyledXlsx) ──
+  const thinSide={style:'thin',color:{argb:'FFD0D0D0'}};
+  const medSide={style:'medium',color:{argb:'FF999999'}};
+  const thinBorder={top:thinSide,bottom:thinSide,left:thinSide,right:thinSide};
+  const medBorder={top:medSide,bottom:medSide,left:medSide,right:medSide};
+  const faintBorder={top:{style:'thin',color:{argb:'FFEEEEEE'}},bottom:{style:'thin',color:{argb:'FFEEEEEE'}},left:{style:'thin',color:{argb:'FFEEEEEE'}},right:{style:'thin',color:{argb:'FFEEEEEE'}}};
+
+  function procType(proc){
+    if(!proc)return'normal';const p=proc.toLowerCase();
+    if(/leave|l\.o\.p|lop|permission|compensatory|casual|sick|absent|holiday/.test(p))return'leave';
+    if(/meeting|admin|training|trainning|automation|induction|briefing/.test(p))return'admin';
+    return'normal';
+  }
+  function numOrDash(v){const n=parseFloat(v);return isNaN(n)?'-':n;}
+  function pctVal(v){const n=parseFloat(v);return isNaN(n)?'-':+(n/100).toFixed(6);}
+
+  // Auto process column width from all entries
+  const maxProcLen=Math.max(10,...entries.flatMap(e=>(e.rows||[]).map(r=>(r.process||'').length)));
+  const procWidth=Math.min(Math.max(maxProcLen*1.1,30),70);
+
+  function applyStyledSheet(ws,dayEntries){
+    ws.views=[{showGridLines:false}];
+    ws.columns=[{width:14},{width:24},{width:procWidth},{width:11},{width:10},{width:9},{width:10},{width:12},{width:14},{width:30}];
+
+    // Header row
+    const hdrRow=ws.addRow(['Date','Name','Process','UOM','Target','TAT','Count','Duration','Percentage','Remarks']);
+    hdrRow.height=22;
+    hdrRow.eachCell(cell=>{
+      cell.font={name:'Calibri',size:11,bold:true,color:{argb:'FFFFFFFF'}};
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF2C1A1A'}};
+      cell.alignment={horizontal:'center',vertical:'middle',wrapText:false};
+      cell.border=medBorder;
+    });
+
+    // Data rows
+    let rowIdx=0;let allDur=0;const allPcts=[];
+    dayEntries.forEach(e=>{
+      (e.rows||[]).forEach(r=>{
+        const isAlt=rowIdx%2===0;
+        const fillColor=isAlt?'FFF5F5F5':'FFFFFFFF';
+        const ptype=procType(r.process||'');
+        const dataRow=ws.addRow([
+          fmtDate(e.date), e.name||'', r.process||'',
+          (r.uom===undefined||r.uom===null||r.uom==='')?'-':r.uom,
+          numOrDash(r.target), numOrDash(r.tat), numOrDash(r.count),
+          numOrDash(r.duration), pctVal(r.percentage),
+          (r.remarks===undefined||r.remarks===null||r.remarks==='')?'':String(r.remarks)
+        ]);
+        dataRow.height=17;
+        dataRow.eachCell({includeEmpty:true},(cell,colNum)=>{
+          cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:fillColor}};
+          cell.border=thinBorder;
+          cell.alignment={horizontal:'center',vertical:'middle',wrapText:(colNum===3||colNum===10)};
+          if(colNum===3){
+            const color=ptype==='leave'?'FFC0392B':ptype==='admin'?'FF1565C0':'FF1A1A1A';
+            cell.font={name:'Calibri',size:10,bold:true,color:{argb:color}};
+          } else {
+            cell.font={name:'Calibri',size:10,color:{argb:'FF1A1A1A'}};
+          }
+          if(colNum===8&&cell.value!=='-'){cell.numFmt='0.00';}
+          if(colNum===9&&cell.value!=='-'){cell.numFmt='0.00%';}
+        });
+        allDur+=parseFloat(r.duration)||0;
+        const p=parseFloat(r.percentage);if(!isNaN(p)&&p>0)allPcts.push(p);
+        rowIdx++;
+      });
+    });
+
+    // Total row
+    const grandAvg=allPcts.length?(allPcts.reduce((a,b)=>a+b,0)/allPcts.length)/100:0;
+    const totalRow=ws.addRow(['','','','','','','Total',allDur,grandAvg,'']);
+    totalRow.height=20;
+    totalRow.eachCell({includeEmpty:true},(cell,colNum)=>{
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFFFFF'}};
+      if(colNum<=6||colNum===10){
+        cell.border=faintBorder;cell.font={name:'Calibri',size:10};
+      } else if(colNum===7){
+        cell.font={name:'Calibri',size:10,bold:true,color:{argb:'FF1A1A1A'}};
+        cell.alignment={horizontal:'center',vertical:'middle'};cell.border=medBorder;
+      } else {
+        cell.font={name:'Calibri',size:10,bold:true,color:{argb:'FF1A1A1A'}};
+        cell.alignment={horizontal:'center',vertical:'middle'};cell.border=medBorder;
+        if(colNum===8){cell.numFmt='0.00';}
+        if(colNum===9){cell.numFmt='0.00%';}
+      }
+    });
+  }
+
+  const wb=new EXJ.Workbook();
+
+  // ── Monthly Summary sheet ──
+  const wsSumm=wb.addWorksheet('Monthly Summary',{views:[{showGridLines:false}]});
+  wsSumm.columns=[{width:14},{width:18},{width:14},{width:20},{width:16}];
+  const summHeaders=['Date','Total Members','Total Tasks','Total Duration (h)','Avg %'];
+  const summHdrRow=wsSumm.addRow(summHeaders);
+  summHdrRow.height=22;
+  summHdrRow.eachCell(cell=>{
+    cell.font={name:'Calibri',size:11,bold:true,color:{argb:'FFFFFFFF'}};
+    cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF2C1A1A'}};
+    cell.alignment={horizontal:'center',vertical:'middle'};
+    cell.border=medBorder;
   });
-  const monthLabel=fromD?(()=>{const d=new Date(fromD+'T00:00:00');return d.toLocaleString('en-GB',{month:'long',year:'numeric'}).replace(' ','_');})():'Monthly';
-  const fname=`Monthly_Report_${filterName?filterName.replace(/ /g,'_')+'_':'All_'}${monthLabel}.xlsx`;
-  XLSX.writeFile(wb,fname,{bookType:'xlsx',type:'binary',cellStyles:true});
-  showToast(`📅 Monthly report downloaded! (${Object.keys(byDate).length} day sheets)`);
+  sortedDates.forEach((dateStr,ri)=>{
+    const dayEntries=byDate[dateStr];
+    let dayDur=0;const dayPcts=[];const members=new Set();
+    dayEntries.forEach(e=>{members.add(e.name);(e.rows||[]).forEach(r=>{dayDur+=parseFloat(r.duration)||0;const p=parseFloat(r.percentage);if(!isNaN(p))dayPcts.push(p);});});
+    const dayAvg=dayPcts.length?+(dayPcts.reduce((a,b)=>a+b,0)/dayPcts.length/100).toFixed(6):'-';
+    const summRow=wsSumm.addRow([fmtDate(dateStr),members.size,(dayEntries.flatMap(e=>e.rows||[])).length,+dayDur.toFixed(2),dayAvg]);
+    summRow.height=17;
+    const fillColor=ri%2===0?'FFF5F5F5':'FFFFFFFF';
+    summRow.eachCell({includeEmpty:true},(cell,colNum)=>{
+      cell.font={name:'Calibri',size:10,color:{argb:'FF1A1A1A'}};
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:fillColor}};
+      cell.alignment={horizontal:'center',vertical:'middle'};
+      cell.border=thinBorder;
+      if(colNum===5&&cell.value!=='-'){cell.numFmt='0.00%';}
+    });
+  });
+
+  // ── One sheet per day ──
+  sortedDates.forEach(dateStr=>{
+    const d=new Date(dateStr+'T00:00:00');
+    const sheetName=String(d.getDate()).padStart(2,'0')+'-'+d.toLocaleString('en-GB',{month:'short'});
+    const ws=wb.addWorksheet(sheetName);
+    applyStyledSheet(ws,byDate[dateStr]);
+  });
+
+  // ── Smart filename (same logic) ──
+  function buildMonthlyFileName(fromD,toD){
+    const todayStr=new Date().toISOString().split('T')[0];
+    const eFrom=fromD||todayStr;const eTo=toD||todayStr;
+    const dF=new Date(eFrom+'T00:00:00');const dT=new Date(eTo+'T00:00:00');
+    const sameMonth=dF.getFullYear()===dT.getFullYear()&&dF.getMonth()===dT.getMonth();
+    const isFirst=dF.getDate()===1;
+    const isLast=dT.getDate()===new Date(dT.getFullYear(),dT.getMonth()+1,0).getDate();
+    if(sameMonth&&isFirst&&isLast){
+      return`ON-GOING REPORT (${dF.toLocaleString('en-GB',{month:'long'})} ${dF.getFullYear()}).xlsx`;
+    }
+    if(eFrom===eTo){
+      return`ON-GOING REPORT (${dF.toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'})}).xlsx`;
+    }
+    const sF=dF.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    const sT=dT.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+    return`ON-GOING REPORT (${sF} - ${sT}).xlsx`;
+  }
+  const fname=buildMonthlyFileName(fromD,toD);
+  const buf=await wb.xlsx.writeBuffer();
+  const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=fname;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+  showToast(`📅 Monthly report downloaded! (${sortedDates.length} day sheets)`);
 }
 
 function exportPDF(){
