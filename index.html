@@ -83,6 +83,20 @@ body.light-mode .totals-row td{background:linear-gradient(90deg,color-mix(in srg
 body.light-mode #theme-toggle-btn{background:rgba(0,0,0,0.07);border-color:rgba(0,0,0,0.15);color:#1e293b;}
 body.light-mode #theme-toggle-btn:hover{background:rgba(0,0,0,0.12);}
 
+/* Manual color-theme picker (login page) */
+.theme-picker-btn{
+  position:absolute;top:1.6rem;right:1.6rem;z-index:6;
+  width:34px;height:34px;border-radius:50%;
+  border:1.5px solid rgba(255,255,255,0.16);background:rgba(255,255,255,0.06);
+  color:#fff;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  transition:all .25s;backdrop-filter:blur(4px);
+}
+.theme-picker-btn:hover{background:rgba(255,255,255,0.16);transform:scale(1.08);border-color:var(--teal);}
+.theme-picker-btn.spin{animation:themePickSpin .5s ease;}
+@keyframes themePickSpin{from{transform:rotate(0)}to{transform:rotate(180deg)}}
+body.light-mode .theme-picker-btn{background:rgba(0,0,0,0.05);border-color:rgba(0,0,0,0.12);color:#1e293b;}
+body.light-mode .theme-picker-btn:hover{background:rgba(0,0,0,0.1);}
+
 /* Light mode left panel overrides */
 body.light-mode .split-left{
   filter:none;
@@ -475,6 +489,7 @@ input[type=number]{-moz-appearance:textfield}
     <div class="brand-wordmark">
       <div class="brand-main">i<span class="brand-dot">-</span>Cons Technologies</div>
     </div>
+    <button class="theme-picker-btn" id="theme-picker-btn" onclick="cycleThemeManual()" title="Change color theme">🎨</button>
     <div class="hero-block">
       <div class="hero-heading">On-going<em>Team</em></div>
       <div class="hero-desc">Track daily work, monitor team performance, and gain real-time insights — all in one place.</div>
@@ -4003,14 +4018,48 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ===== WEEKLY THEME ENGINE ===== */
-function applyWeeklyTheme(){
-  // ISO week number
+function _baseWeeklyThemeIndex(){
   const now=new Date();
   const jan4=new Date(now.getFullYear(),0,4);
   const startOfWeek1=new Date(jan4);
   startOfWeek1.setDate(jan4.getDate()-(jan4.getDay()||7)+1);
   const weekNum=Math.floor((now-startOfWeek1)/(7*24*60*60*1000))+1;
-  const themeIndex=((weekNum-1+2)%8); // offset=2 → week 24 = index 1 (Ocean)
+  return ((weekNum-1+2)%8); // offset=2 → week 24 = index 1 (Ocean)
+}
+
+// Cycle to the next color theme manually (per-browser override).
+// Click cycles 0→1→...→7→back to the weekly auto theme.
+function cycleThemeManual(){
+  let cur;
+  try{
+    const ov=localStorage.getItem('drt_theme_override');
+    cur=(ov!==null&&ov!=='')?parseInt(ov,10):_baseWeeklyThemeIndex();
+  }catch(e){cur=_baseWeeklyThemeIndex();}
+  const next=(cur+1)%8;
+  try{
+    if(next===_baseWeeklyThemeIndex()){
+      // Back to the start of the cycle — clear override, return to weekly auto theme
+      localStorage.removeItem('drt_theme_override');
+    }else{
+      localStorage.setItem('drt_theme_override',String(next));
+    }
+  }catch(e){}
+  applyWeeklyTheme();
+  const btn=document.getElementById('theme-picker-btn');
+  if(btn){btn.classList.remove('spin');requestAnimationFrame(()=>btn.classList.add('spin'));setTimeout(()=>btn.classList.remove('spin'),500);}
+}
+
+function applyWeeklyTheme(){
+  let themeIndex=_baseWeeklyThemeIndex();
+
+  // Manual per-browser override (set via the 🎨 theme-picker button) takes precedence
+  try{
+    const override=localStorage.getItem('drt_theme_override');
+    if(override!==null && override!==''){
+      const oi=parseInt(override,10);
+      if(!isNaN(oi)&&oi>=0&&oi<=7)themeIndex=oi;
+    }
+  }catch(e){}
 
   /* ── 8 BOLD UNIQUE THEMES ──────────────────────────────────────────
      Each has:
