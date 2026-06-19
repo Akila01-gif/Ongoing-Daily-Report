@@ -646,7 +646,7 @@ input[type=number]{-moz-appearance:textfield}
               <option value="SME">SME</option>
               <option value="Senior Process Associate">Senior Process Associate</option>
               <option value="Process Associate">Process Associate</option>
-              <option value="Trainee Process Analyst">Trainee Process Analyst</option>
+              <option value="Process Analyst">Process Analyst</option>
               <option value="Trainee Process Associate">Trainee Process Associate</option>
             </select>
           </div>
@@ -949,7 +949,7 @@ input[type=number]{-moz-appearance:textfield}
           <option value="SME">SME</option>
           <option value="Senior Process Associate">Senior Process Associate</option>
           <option value="Process Associate">Process Associate</option>
-          <option value="Trainee Process Analyst">Trainee Process Analyst</option>
+          <option value="Process Analyst">Process Analyst</option>
         </select>
       </div>
     </div>
@@ -1696,7 +1696,7 @@ const USER_ACCOUNTS = {
   "ICTE/1119": { name: "Rajesh Kannan G",  role: "Process Associate" },
   "ICTE/141":  { name: "Tamilselvan S",    role: "Senior Process Associate" },
   "ICTE/1104": { name: "Vinodini S",       role: "Process Associate" },
-  "ICTE/1228": { name: "Sanjay Kumar N",   role: "Trainee Process Analyst" },
+  "ICTE/1228": { name: "Sanjay Kumar N",   role: "Process Analyst" },
 };
 const SME_ID = "ICTE/501";
 const SME_NAME = "Anusha R";
@@ -1957,7 +1957,7 @@ function launchApp(uid){
         overlay.style.display='none';overlay.style.opacity='1';overlay.style.transform='';overlay.style.transition='';
         document.querySelectorAll('.lstep').forEach(el=>{el.classList.remove('active','done');});
         progEl.style.width='0%';subEl.classList.remove('done');
-        const roleBadge=isSME?`<span class="sme-badge">⭐ SME</span>`:`<span class="user-role-tag">${currentUserRole==='Trainee Process Analyst'?'Trainee':currentUserRole.replace('Process ','').replace('Associate','Assoc.')}</span>`;
+        const roleBadge=isSME?`<span class="sme-badge">⭐ SME</span>`:`<span class="user-role-tag">${currentUserRole==='Process Analyst'?'Trainee':currentUserRole.replace('Process ','').replace('Associate','Assoc.')}</span>`;
         document.getElementById('navUser').innerHTML=`${account.name} ${roleBadge}`;
         document.getElementById('navDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
         document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
@@ -2417,7 +2417,7 @@ function clearForm(){
 function fmtDate(d){if(!d)return'';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
 function pctClass(p){const n=parseFloat(p);if(isNaN(n))return'';if(n>=80)return'pct-hi';if(n>=50)return'pct-md';return'pct-lo';}
 function pctBarClass(p){const n=parseFloat(p);if(isNaN(n))return'pct-hi-bar';if(n>=80)return'pct-hi-bar';if(n>=50)return'pct-md-bar';return'pct-lo-bar';}
-function rolePill(r){if(r==='SME')return`<span class="role-pill rp-sme">SME</span>`;if(r==='Process Associate')return`<span class="role-pill rp-pa">Process Assoc.</span>`;if(r==='Trainee Process Analyst'||r==='Trainee Process Associate')return`<span class="role-pill rp-pa" style="background:rgba(255,183,3,0.12);color:#b97c00;border-color:rgba(255,183,3,0.35)">Trainee</span>`;return`<span class="role-pill rp-spa">Senior Process Assoc.</span>`;}
+function rolePill(r){if(r==='SME')return`<span class="role-pill rp-sme">SME</span>`;if(r==='Process Associate')return`<span class="role-pill rp-pa">Process Assoc.</span>`;if(r==='Process Analyst'||r==='Trainee Process Associate')return`<span class="role-pill rp-pa" style="background:rgba(255,183,3,0.12);color:#b97c00;border-color:rgba(255,183,3,0.35)">Trainee</span>`;return`<span class="role-pill rp-spa">Senior Process Assoc.</span>`;}
 function pctDisplay(p){const n=parseFloat(p),cls=pctClass(p),w=isNaN(n)?0:Math.min(n,100),bc=pctBarClass(p);return`<div class="pct-bar-wrap"><span class="${cls}" style="font-size:11px">${p}</span><div class="pct-bar-bg"><div class="pct-bar-fill ${bc}" style="width:${w}%"></div></div></div>`;}
 
 function getFiltered(){
@@ -3990,7 +3990,7 @@ selectUserType('existing');initQuotes();updateLoginChips();
       document.getElementById('loginPage').style.display='none';
       const ap=document.getElementById('appPage');ap.style.display='flex';ap.style.height='auto';
       const isSME=(currentUserRole==='SME');
-      const roleBadge=isSME?`<span class="sme-badge">⭐ SME</span>`:`<span class="user-role-tag">${currentUserRole==='Trainee Process Analyst'?'Trainee':currentUserRole.replace('Process ','').replace('Associate','Assoc.')}</span>`;
+      const roleBadge=isSME?`<span class="sme-badge">⭐ SME</span>`:`<span class="user-role-tag">${currentUserRole==='Process Analyst'?'Trainee':currentUserRole.replace('Process ','').replace('Associate','Assoc.')}</span>`;
       document.getElementById('navUser').innerHTML=`${account.name} ${roleBadge}`;
       const nd=document.getElementById('navDate');if(nd){const now=new Date();nd.textContent=now.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});}
       const fRole=document.getElementById('f-role');
@@ -5041,7 +5041,7 @@ function applyWeeklyTheme(){
           <select id="mm-role" style="padding:8px 11px;border:1.5px solid #d0e8e0;border-radius:7px;font-size:12px;outline:none;background:#fff;">
             <option value="Process Associate">Process Associate</option>
             <option value="Senior Process Associate">Senior Process Associate</option>
-            <option value="Trainee Process Analyst">Trainee Process Analyst</option>
+            <option value="Process Analyst">Process Analyst</option>
             <option value="SME">SME</option>
           </select>
         </div>
@@ -5103,7 +5103,7 @@ var ROLE_COLORS = {
   'SME':'#e85d04',
   'Senior Process Associate':'#0d47a1',
   'Process Associate':'#c44b00',
-  'Trainee Process Analyst':'#b45309'
+  'Process Analyst':'#b45309'
 };
 
 function renderMemberList(){
@@ -5131,7 +5131,7 @@ function renderMemberList(){
     var rcBd = rc + '35';
 
     if(mmEditId === id){
-      var roleOpts = ['Process Associate','Senior Process Associate','Trainee Process Analyst','SME'].map(function(r){
+      var roleOpts = ['Process Associate','Senior Process Associate','Process Analyst','SME'].map(function(r){
         return '<option value="' + safeHtml(r) + '"' + (r === m.role ? ' selected' : '') + '>' + safeHtml(r) + '</option>';
       }).join('');
 
