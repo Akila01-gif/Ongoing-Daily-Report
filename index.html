@@ -560,12 +560,13 @@ input[type=number]{-moz-appearance:textfield}
         <div class="forgot-panel" id="forgotPanel">
           <div id="fpStep1">
             <div class="fp-title"><span>🔄</span> Reset Your Password</div>
-            <p style="font-size:11.5px;color:#8fa3b1;margin-bottom:.8rem;line-height:1.55;">Enter your <strong style="color:var(--teal-dark)">Employee ID</strong> — your reset code will appear on screen instantly.</p>
-            <div class="fld" style="margin-bottom:.7rem"><label>Employee ID</label><span class="fld-icon">👤</span><input type="text" id="resetZimbra" placeholder="e.g. ICTE/974" autocomplete="off"></div>
+            <p style="font-size:11.5px;color:#8fa3b1;margin-bottom:.8rem;line-height:1.55;">Enter your <strong style="color:var(--teal-dark)">Employee ID</strong> and <strong style="color:var(--teal-dark)">Zimbra ID</strong> to 		verify your identity.</p>
+            <div class="fld" style="margin-bottom:.7rem"><label>Employee ID</label><span class="fld-icon">👤</span><input type="text" id="resetEmpId" placeholder="e.g. ICTE/974" autocomplete="off"></div>
+            <div class="fld" style="margin-bottom:.7rem"><label>Zimbra ID</label><span class="fld-icon">📧</span><input type="text" id="resetZimbra" placeholder="e.g. akilandeshwari.m@i-constech.com" 	autocomplete="off"></div>
             <button class="btn-cta" style="border-radius:9px" onclick="doSendResetCode()"><div class="btn-cta-inner" style="padding:11px 16px;font-size:12.5px">🔍 Verify &amp; Get Reset Code</div></button>
           </div>
           <div id="fpStep2" style="display:none">
-            <div class="fp-title"><span>🔑</span> Enter Reset Code</div>
+            <div class="fp-title"><span>🔑</span> Enter Reset Code from Your Zimbra</div>
             <div id="fpEmailHint" style="font-size:11.5px;color:#8fa3b1;margin-bottom:.8rem;line-height:1.55;background:#fff8f0;border:1.5px solid rgba(249,115,22,.25);border-radius:8px;padding:.6rem .8rem;"></div>
             <div class="fld" style="margin-bottom:.7rem"><label>Reset Code</label><span class="fld-icon">🔢</span><input type="text" id="fpCode" placeholder="Enter 6-digit code" autocomplete="off" maxlength="6" style="letter-spacing:.18em;font-family:var(--font-mono)"></div>
             <div class="fld" style="margin-bottom:.7rem"><label>New Password</label><span class="fld-icon">🔑</span><input type="password" id="resetPass1" placeholder="Minimum 4 characters"></div>
@@ -984,6 +985,12 @@ input[type=number]{-moz-appearance:textfield}
 
 
 <!-- Firebase Realtime Database SDK (compat, works with non-module scripts) -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+  (function(){
+    emailjs.init({publicKey:'YOUR_PUBLIC_KEY'}); // ← paste your EmailJS Public Key here
+  })();
+</script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <script>
@@ -1987,7 +1994,7 @@ function launchApp(uid){
 function showErr(msg){const el=document.getElementById('loginErr');if(msg){el.innerHTML=msg;el.style.display='block';setTimeout(()=>el.style.display='none',4500);}else el.style.display='none';}
 
 // ══ FORGOT / RESET PASSWORD ══
-let _fpResetCode='',_fpResetUid='';
+let _fpResetCode='',_fpResetUid='',_fpResetExpiry=0;
 function toggleForgot(){
   const panel=document.getElementById('forgotPanel');const isOpen=panel.classList.contains('visible');
   panel.classList.toggle('visible',!isOpen);
@@ -1997,24 +2004,68 @@ function toggleForgot(){
     _fpResetCode='';_fpResetUid='';showErr('');
   }
 }
-function fpGoBack(){document.getElementById('fpStep2').style.display='none';document.getElementById('fpStep1').style.display='block';document.getElementById('fpCode').value='';document.getElementById('resetPass1').value='';document.getElementById('resetPass2').value='';_fpResetCode='';_fpResetUid='';showErr('');}
+function fpGoBack(){document.getElementById('fpStep2').style.display='none';document.getElementById('fpStep1').style.display='block';document.getElementById('fpCode').value='';document.getElementById('resetPass1').value='';document.getElementById('resetPass2').value='';if(document.getElementById('resetEmpId'))document.getElementById('resetEmpId').value='';document.getElementById('resetZimbra').value='';_fpResetCode='';_fpResetUid='';showErr('');}
 async function doSendResetCode(){
-  let empId=document.getElementById('resetZimbra').value.trim().toUpperCase().replace(/\s+/g,'');
+  let empId=(document.getElementById('resetEmpId').value||'').trim().toUpperCase().replace(/\s+/g,'');
+  const zimbraInput=(document.getElementById('resetZimbra').value||'').trim().toLowerCase();
+
   if(!empId){showErr('⚠️ Please enter your Employee ID.');return;}
+  if(!zimbraInput){showErr('⚠️ Please enter your Zimbra ID.');return;}
+
   if(!USER_ACCOUNTS[empId]){empId=empId.replace(/^([A-Z]+)(\d+)$/,'$1/$2');}
   const uid=empId;
   const account=USER_ACCOUNTS[uid];
   if(!account){showErr('❌ Employee ID not found. Try format: ICTE/974');return;}
+
+  // Verify Zimbra ID matches the account
+  const expectedZimbra=(ZIMBRA_EMAILS[uid]||'').toLowerCase();
+  if(!expectedZimbra){showErr('❌ No Zimbra ID registered for this Employee ID.');return;}
+  if(zimbraInput!==expectedZimbra){
+    showErr('❌ Zimbra ID does not match. Please check and try again.');return;
+  }
+
   const users=await getUsers();
   if(!users[uid]){showErr('⚠️ No password set for this ID. Use "First Time Setup" tab instead.');return;}
-  _fpResetCode=String(Math.floor(100000+Math.random()*900000));_fpResetUid=uid;
-  document.getElementById('fpEmailHint').innerHTML='✅ Identity verified for <strong style="color:var(--teal-dark)">'+account.name+'</strong> ('+uid+')<br><br><div style="text-align:center;margin-top:8px"><div style="font-size:11px;color:#888;margin-bottom:6px;font-weight:600;">YOUR RESET CODE</div><span style="display:inline-block;background:#fff;border:2px solid var(--teal);border-radius:8px;padding:10px 22px;font-family:var(--font-mono);font-size:26px;letter-spacing:.3em;color:var(--teal-dark);font-weight:800;">'+_fpResetCode+'</span><div style="font-size:10.5px;color:#aaa;margin-top:6px;">Copy this code and enter it below ↓</div></div>';
-  document.getElementById('fpStep1').style.display='none';document.getElementById('fpStep2').style.display='block';showErr('');
+
+  // Generate 6-digit code
+  _fpResetCode=String(Math.floor(100000+Math.random()*900000));
+  _fpResetUid=uid;
+  _fpResetExpiry=Date.now()+(15*60*1000);
+
+  // Store in Firebase
+  try{
+    if(window._fbReady) await fbSet('drt_reset_requests/'+uid.replace('/','_'),{
+      code:_fpResetCode, uid:uid, name:account.name,
+      expiry:_fpResetExpiry, requestedAt:new Date().toISOString(), status:'pending'
+    });
+  }catch(e){}
+
+  // Show code ONLY after both ID + Zimbra verified ✅
+  document.getElementById('fpEmailHint').innerHTML=
+    '<div style="text-align:center;padding:8px 0">'
+    +'<div style="font-size:13px;font-weight:800;color:#0a0a0a;margin-bottom:4px">✅ Identity Verified!</div>'
+    +'<div style="font-size:11px;color:#888;margin-bottom:12px">Employee ID & Zimbra ID matched successfully</div>'
+    +'<div style="background:#0a0a0a;border-radius:12px;padding:16px;margin-bottom:12px;">'
+    +'<div style="font-size:10px;font-weight:700;color:#aaa;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:8px;">YOUR RESET CODE</div>'
+    +'<div style="font-family:var(--font-mono);font-size:32px;font-weight:900;letter-spacing:0.35em;color:#f97316;text-shadow:0 0 20px rgba(249,115,22,0.5);">'+_fpResetCode+'</div>'
+    +'<div style="font-size:10px;color:#666;margin-top:8px;">Copy this code and enter it below</div>'
+    +'</div>'
+    +'<div style="background:#fff8f0;border:1.5px solid rgba(249,115,22,0.3);border-radius:10px;padding:10px 14px;font-size:11px;color:#c44b00;font-weight:600;line-height:1.7;">'
+    +'⏱ Code expires in <strong>5 seconds</strong><br>'
+    +'🔒 Only visible because your Zimbra ID was verified'
+    +'</div>'
+    +'</div>';
+
+  document.getElementById('fpStep1').style.display='none';
+  document.getElementById('fpStep2').style.display='block';
+  showErr('');
 }
 async function doResetPassword(){
   const code=document.getElementById('fpCode').value.trim();const p1=document.getElementById('resetPass1').value;const p2=document.getElementById('resetPass2').value;
   if(!code){showErr('⚠️ Please enter the reset code from your Zimbra mail.');return;}
-  if(code!==_fpResetCode){showErr('❌ Incorrect reset code. Please check your Zimbra inbox.');return;}
+  if(Date.now()>_fpResetExpiry){showErr('⏱ Reset code expired. Please request a new one.');_fpResetCode='';_fpResetUid='';fpGoBack();return;}
+  if(Date.now()>_fpResetExpiry){showErr('⏱ Code expired. Please request a new one.');_fpResetCode='';_fpResetUid='';fpGoBack();return;}
+  if(code!==_fpResetCode){showErr('❌ Incorrect reset code. Please try again.');return;}
   if(!_fpResetUid){showErr('⚠️ Session expired. Please start again.');return;}
   if(!p1||p1.length<4){showErr('⚠️ Password must be at least 4 characters.');return;}
   if(p1!==p2){showErr('❌ Passwords do not match.');return;}
