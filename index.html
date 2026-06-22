@@ -2417,7 +2417,7 @@ function clearForm(){
 function fmtDate(d){if(!d)return'';const[y,m,day]=d.split('-');return`${day}/${m}/${y}`;}
 function pctClass(p){const n=parseFloat(p);if(isNaN(n))return'';if(n>=80)return'pct-hi';if(n>=50)return'pct-md';return'pct-lo';}
 function pctBarClass(p){const n=parseFloat(p);if(isNaN(n))return'pct-hi-bar';if(n>=80)return'pct-hi-bar';if(n>=50)return'pct-md-bar';return'pct-lo-bar';}
-function rolePill(r){if(r==='SME')return`<span class="role-pill rp-sme">SME</span>`;if(r==='Process Associate')return`<span class="role-pill rp-pa">Process Assoc.</span>`;if(r==='Process Analyst'||r==='Trainee Process Associate')return`<span class="role-pill rp-pa" style="background:rgba(255,183,3,0.12);color:#b97c00;border-color:rgba(255,183,3,0.35)">Trainee</span>`;return`<span class="role-pill rp-spa">Senior Process Assoc.</span>`;}
+function rolePill(r){if(r==='SME')return`<span class="role-pill rp-sme">SME</span>`;if(r==='Process Associate')return`<span class="role-pill rp-pa">Process Assoc.</span>`;if(r==='Trainee Process Associate')return`<span class="role-pill rp-pa" style="background:rgba(255,183,3,0.12);color:#b97c00;border-color:rgba(255,183,3,0.35)">Trainee</span>`;if(r==='Process Analyst')return`<span class="role-pill rp-pa" style="background:rgba(99,102,241,0.12);color:#4338ca;border-color:rgba(99,102,241,0.35)">Process Analyst</span>`;return`<span class="role-pill rp-spa">Senior Process Assoc.</span>`;}
 function pctDisplay(p){const n=parseFloat(p),cls=pctClass(p),w=isNaN(n)?0:Math.min(n,100),bc=pctBarClass(p);return`<div class="pct-bar-wrap"><span class="${cls}" style="font-size:11px">${p}</span><div class="pct-bar-bg"><div class="pct-bar-fill ${bc}" style="width:${w}%"></div></div></div>`;}
 
 function getFiltered(){
