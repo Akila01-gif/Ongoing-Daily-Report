@@ -2037,10 +2037,13 @@ function launchApp(uid){
           smeBar.style.display='none';if(accessNote){accessNote.style.display='flex';accessNote.innerHTML='✏️ You can view all team reports in order. You can edit or delete only your own entries.';}
           if(resourceBar)resourceBar.style.display='flex';
         }
-        populateNameDropdowns();initApp().then(()=>{startRealtimeSync();showSyncStatus();eodStartMonitor();});switchTab('add');
+       populateNameDropdowns();initApp().then(()=>{startRealtimeSync();showSyncStatus();eodStartMonitor();});switchTab('add');
         // Hide Rating tab for non-SME users (only Anusha SME can see Rating)
         const ratingTab=document.querySelector('.tab[onclick*="rating"]');
         if(ratingTab) ratingTab.style.display=isSME?'':'none';
+        // Hide Consolidation Report tab for non-SME users
+        const consolidationTab=document.querySelector('.tab[onclick*="consolidation"]');
+        if(consolidationTab) consolidationTab.style.display=isSME?'':'none';
       },580);
     },300);
   },1450);
@@ -4205,8 +4208,10 @@ selectUserType('existing');initQuotes();updateLoginChips();
       if(isSME){if(smeBar)smeBar.style.display='flex';if(accessNote)accessNote.style.display='none';if(resourceBar)resourceBar.style.display='none';}
       else{if(smeBar)smeBar.style.display='none';if(accessNote){accessNote.style.display='flex';accessNote.innerHTML='✏️ You can view all team reports in order. You can edit or delete only your own entries.';}if(resourceBar)resourceBar.style.display='flex';}
       document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
-      const ratingTab=document.querySelector('.tab[onclick*="rating"]');
+     const ratingTab=document.querySelector('.tab[onclick*="rating"]');
       if(ratingTab) ratingTab.style.display=isSME?'':'none';
+      const consolidationTab=document.querySelector('.tab[onclick*="consolidation"]');
+      if(consolidationTab) consolidationTab.style.display=isSME?'':'none';
       populateNameDropdowns();
       addRow();addRow();addRow();renderView();renderSummary();updateTotals('rows-body');updateLoginChips();checkStorageUsage();
       switchTab('add');
