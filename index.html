@@ -618,6 +618,7 @@ input[type=number]{-moz-appearance:textfield}
       <button class="tab" onclick="switchTab('monthly')">📅 Monthly Report</button>
       <button class="tab" onclick="switchTab('quality')">⭐ Quality</button>
       <button class="tab" onclick="switchTab('rating')">🏆 Rating</button>
+      <button class="tab" onclick="switchTab('consolidation')">📑 Consolidation Report</button>
       <button class="tab" onclick="switchTab('summary')">📊 Summary</button>
     </div>
 
@@ -906,6 +907,59 @@ input[type=number]{-moz-appearance:textfield}
         </div>
       </div>
     </div>
+
+<!-- CONSOLIDATION REPORT -->
+
+<div class="section" id="tab-consolidation">
+  <div class="panel">
+    <div class="panel-title"><span class="dot"></span>Consolidation Report — Process-wise Count &amp; Hours</div>
+    <div class="filter-bar" style="margin-bottom:1rem;flex-wrap:wrap;gap:8px;align-items:center">
+      <input type="text" id="con-process" placeholder="🔍 Enter Process Name…"
+        style="flex:2;min-width:200px;padding:8px 12px;border:1.5px solid #e2eaf0;border-radius:8px;font-size:12px;font-family:var(--font-body);color:var(--slate);background:#fff;outline:none">
+      <div style="display:flex;align-items:center;gap:6px">
+        <label style="font-size:10px;font-weight:700;color:#8fa3b1;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap">Month</label>
+        <select id="con-month" style="padding:8px 10px;border:1.5px solid #e2eaf0;border-radius:8px;font-size:12px;font-family:var(--font-body);color:var(--slate);background:#fff;outline:none">
+          <option value="">All Months</option>
+          <option value="01">January</option><option value="02">February</option>
+          <option value="03">March</option><option value="04">April</option>
+          <option value="05">May</option><option value="06">June</option>
+          <option value="07">July</option><option value="08">August</option>
+          <option value="09">September</option><option value="10">October</option>
+          <option value="11">November</option><option value="12">December</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <label style="font-size:10px;font-weight:700;color:#8fa3b1;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap">Year</label>
+        <select id="con-year" style="padding:8px 10px;border:1.5px solid #e2eaf0;border-radius:8px;font-size:12px;font-family:var(--font-body);color:var(--slate);background:#fff;outline:none"></select>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <label style="font-size:10px;font-weight:700;color:#8fa3b1;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap">From</label>
+        <input type="date" id="con-from" style="padding:8px 10px;border:1.5px solid #e2eaf0;border-radius:8px;font-size:12px;font-family:var(--font-body);color:var(--slate);background:#fff;outline:none">
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <label style="font-size:10px;font-weight:700;color:#8fa3b1;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap">To</label>
+        <input type="date" id="con-to" style="padding:8px 10px;border:1.5px solid #e2eaf0;border-radius:8px;font-size:12px;font-family:var(--font-body);color:var(--slate);background:#fff;outline:none">
+      </div>
+      <button class="btn-primary" onclick="renderConsolidation()">🔍 Apply</button>
+      <button class="btn-outline" onclick="clearConsolidationFilters()">↺ Clear</button>
+      <button class="btn-success" id="con-excel-btn" onclick="exportConsolidationExcel()">⬇ Excel</button>
+    </div>
+    <div class="stats-grid" id="con-stats" style="margin-bottom:1.2rem"></div>
+    <div class="view-scroll">
+      <table class="vtbl" id="con-table" style="min-width:600px">
+        <thead>
+          <tr>
+            <th style="text-align:left;min-width:280px">Process Name</th>
+            <th>Total Count</th>
+            <th>Total Hours</th>
+          </tr>
+        </thead>
+        <tbody id="con-body"></tbody>
+        <tfoot id="con-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+</div>
 
     <!-- SUMMARY -->
     <div class="section" id="tab-summary">
@@ -2317,13 +2371,14 @@ function populateNameDropdowns(){
 async function initApp(){await loadData();addRow();addRow();addRow();const _fd=document.getElementById('filter-date');if(_fd&&!_fd.value)_fd.value=new Date().toISOString().split('T')[0];renderView();renderSummary();updateTotals('rows-body');updateLoginChips();checkStorageUsage();}
 
 function switchTab(t){
-  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['add','view','monthly','quality','rating','summary'][i]===t));
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['add','view','monthly','quality','rating','consolidation','summary'][i]===t));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   if(t==='view'){const fd=document.getElementById('filter-date');if(fd&&!fd.value)fd.value=new Date().toISOString().split('T')[0];renderView();}
   if(t==='monthly'){initMonthlyFilters();renderMonthly();}
   if(t==='quality')initQualityFilters();
   if(t==='rating')initRatingFilters();
+  if(t==='consolidation'){initConsolidationFilters();renderConsolidation();}
   if(t==='summary')renderSummary();
 }
 
@@ -2611,6 +2666,106 @@ function renderSummary(){
     return`<tr><td style="font-weight:700;text-align:center;font-family:var(--font-mono);font-size:11px;color:#c44b00">${empId}</td><td style="font-weight:700;text-align:center">${nm}</td><td style="text-align:center">${rolePill(d.role)}</td><td style="text-align:center">${d.dates.size}</td><td style="text-align:center">${d.rows.length}</td><td class="${pctClass(ap)}" style="text-align:center">${ap}</td></tr>`;
   }).join('');
   document.getElementById('sum-body').innerHTML=trs||'<tr><td colspan="6" class="empty">No data yet.</td></tr>';
+}  
+
+// ══ CONSOLIDATION REPORT ══
+function initConsolidationFilters(){
+  const sel=document.getElementById('con-year');
+  if(!sel)return;
+  const now=new Date();
+  const curYear=now.getFullYear();
+  const years=new Set();
+  data.forEach(e=>{if(e.date)years.add(parseInt(e.date.split('-')[0]));});
+  for(let y=curYear-1;y<=2040;y++) years.add(y);
+  const sorted=[...years].sort((a,b)=>b-a);
+  sel.innerHTML='<option value="">All Years</option>'+sorted.map(y=>`<option value="${y}"${y===curYear?' selected':''}>${y}</option>`).join('');
+}
+
+function getConsolidationFiltered(){
+  const procQ=(document.getElementById('con-process').value||'').toLowerCase().trim();
+  const month=document.getElementById('con-month').value;
+  const year=document.getElementById('con-year').value;
+  const fromD=document.getElementById('con-from').value;
+  const toD=document.getElementById('con-to').value;
+
+  return data.filter(e=>{
+    if(year && !e.date.startsWith(year)) return false;
+    if(month && e.date.split('-')[1]!==month) return false;
+    if(fromD && e.date<fromD) return false;
+    if(toD && e.date>toD) return false;
+    return true;
+  }).flatMap(e=>(e.rows||[]).map(r=>({...r,date:e.date})))
+    .filter(r=>!procQ || (r.process||'').toLowerCase().includes(procQ));
+}
+
+function renderConsolidation(){
+  const rows=getConsolidationFiltered();
+  const byProcess={};
+  rows.forEach(r=>{
+    const proc=r.process||'(Unnamed Process)';
+    if(!byProcess[proc])byProcess[proc]={count:0,hours:0};
+    byProcess[proc].count+=parseFloat(r.count)||0;
+    byProcess[proc].hours+=parseFloat(r.duration)||0;
+  });
+
+  const procNames=Object.keys(byProcess).sort((a,b)=>byProcess[b].hours-byProcess[a].hours);
+  const totalCount=procNames.reduce((s,p)=>s+byProcess[p].count,0);
+  const totalHours=procNames.reduce((s,p)=>s+byProcess[p].hours,0);
+
+  document.getElementById('con-stats').innerHTML=`
+    <div class="stat-card sc-slate"><div class="snum">${procNames.length}</div><div class="slbl">Processes</div></div>
+    <div class="stat-card sc-teal"><div class="snum">${totalCount.toFixed(0)}</div><div class="slbl">Total Count</div></div>
+    <div class="stat-card sc-amber"><div class="snum">${totalHours.toFixed(2)}</div><div class="slbl">Total Hours</div></div>`;
+
+  const tb=document.getElementById('con-body');
+  const tf=document.getElementById('con-tfoot');
+  if(!procNames.length){
+    tb.innerHTML='<tr><td colspan="3" class="empty">📭 No records found.</td></tr>';
+    tf.innerHTML='';
+    return;
+  }
+  tb.innerHTML=procNames.map(p=>`
+    <tr>
+      <td style="text-align:left">${p}</td>
+      <td>${byProcess[p].count.toFixed(0)}</td>
+      <td>${byProcess[p].hours.toFixed(2)}</td>
+    </tr>`).join('');
+  tf.innerHTML=`<tr><td style="text-align:right;font-weight:800">Grand Total</td><td style="font-weight:800">${totalCount.toFixed(0)}</td><td style="font-weight:800">${totalHours.toFixed(2)}</td></tr>`;
+}
+
+function clearConsolidationFilters(){
+  document.getElementById('con-process').value='';
+  document.getElementById('con-month').value='';
+  document.getElementById('con-year').value='';
+  document.getElementById('con-from').value='';
+  document.getElementById('con-to').value='';
+  renderConsolidation();
+}
+
+function exportConsolidationExcel(){
+  const XLSX=window.XLSX;
+  const rows=getConsolidationFiltered();
+  const byProcess={};
+  rows.forEach(r=>{
+    const proc=r.process||'(Unnamed Process)';
+    if(!byProcess[proc])byProcess[proc]={count:0,hours:0};
+    byProcess[proc].count+=parseFloat(r.count)||0;
+    byProcess[proc].hours+=parseFloat(r.duration)||0;
+  });
+  const procNames=Object.keys(byProcess).sort((a,b)=>byProcess[b].hours-byProcess[a].hours);
+  const exRows=[['Process Name','Total Count','Total Hours']];
+  procNames.forEach(p=>exRows.push([p,byProcess[p].count,byProcess[p].hours]));
+  const totalCount=procNames.reduce((s,p)=>s+byProcess[p].count,0);
+  const totalHours=procNames.reduce((s,p)=>s+byProcess[p].hours,0);
+  exRows.push(['Grand Total',totalCount,totalHours]);
+
+  const ws=XLSX.utils.aoa_to_sheet(exRows);
+  ws['!cols']=[{wch:40},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet((function(){const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Consolidation');return wb;})(),ws,'Consolidation');
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Consolidation');
+  XLSX.writeFile(wb,`Consolidation_Report_${new Date().toISOString().split('T')[0]}.xlsx`,{bookType:'xlsx',type:'binary'});
+  showToast('✅ Consolidation Excel downloaded!');
 }
 
 // ══ AUTO WORKING DAYS ══
