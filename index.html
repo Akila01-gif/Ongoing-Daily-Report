@@ -1070,6 +1070,8 @@ input[type=number]{-moz-appearance:textfield}
 </script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
 <script>
 // ══ FIREBASE CONFIG — i-Cons Technologies Daily Report Tool ══
 (function(){
@@ -1085,9 +1087,11 @@ input[type=number]{-moz-appearance:textfield}
   };
   try{
     if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-    window._fbDb = firebase.database();
+   window._fbDb   = firebase.database();
+    window._fbAuth = firebase.auth();
+    window._fbFs   = firebase.firestore();
     window._fbReady = true;
-    console.log('[DRT] Firebase ready ✓');
+    console.log('[DRT] Firebase ready ✓ (RTDB + Auth + Firestore)');
   }catch(e){
     console.warn('[DRT] Firebase unavailable, using localStorage fallback:', e.message);
     window._fbReady = false;
@@ -1851,43 +1855,36 @@ function showQuote(idx){
 }
 function setQuote(idx){clearInterval(quoteTimer);showQuote(idx);quoteTimer=setInterval(()=>{currentQuote=(currentQuote+1)%QUOTES.length;showQuote(currentQuote);},4500);}
 
+// ── Firebase Auth wrappers ──
+// Passwords are now managed by Firebase Authentication.
+// Legacy localStorage user store is kept as fallback for offline-only mode.
+
+function hashPwd(s){
+  // Kept for offline/localStorage fallback path only
+  let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}
+  return(h>>>0).toString(36)+'_'+s.length;
+}
+
 async function getUsers(){
-  // FIRST: check localStorage (instant, works on GitHub Pages — this is where passwords are saved)
+  // Legacy fallback — returns localStorage map {uid: hashedPwd}
+  // Used only when Firebase Auth is unavailable
   let localUsers={};
   try{const lsUsers=localStorage.getItem('drt_users');if(lsUsers)localUsers=JSON.parse(lsUsers);}catch(e){}
-  if(Object.keys(localUsers).length>0) return localUsers;
-
-  // SECOND: try window.storage (Claude artifact environment)
-  try{const r=await window.storage.get('drt_users',true);if(r&&r.value)return JSON.parse(r.value);}catch(e){}
-  try{const r=await window.storage.get('drt_users',false);if(r&&r.value){
-    const local=JSON.parse(r.value);
-    try{localStorage.setItem('drt_users',r.value);}catch(e){}
-    return local;
-  }}catch(e){}
-
-  // THIRD: try Firebase (shared cloud, may not be configured yet)
-  try{
-    if(window._fbReady){
-      const val=await fbGet('drt_users');
-      if(val){
-        const users=typeof val==='string'?JSON.parse(val):(val&&typeof val==='object'?val:{});
-        try{localStorage.setItem('drt_users',JSON.stringify(users));}catch(e){}
-        return users;
-      }
-    }
-  }catch(e){}
-  return {};
+  return localUsers;
 }
+
 async function saveUsers(u){
   const json=JSON.stringify(u);
-  // Save to localStorage FIRST (instant — this is what getUsers reads first)
-  try{localStorage.setItem('drt_users',json);}catch(e){console.error('saveUsers error',e);}
-  // Also save to window.storage
-  try{await window.storage.set('drt_users',json,true);}catch(e){}
-  // Also save to Firebase (async, don't block)
-  try{if(window._fbReady)fbSet('drt_users',u).catch(()=>{});}catch(e){}
+  try{localStorage.setItem('drt_users',json);}catch(e){}
 }
-function hashPwd(s){let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return(h>>>0).toString(36)+'_'+s.length;}
+
+// Map an Employee ID to its Zimbra email for Firebase Auth
+function empIdToEmail(uid){
+  // Use ZIMBRA_EMAILS map if available, else generate a placeholder
+  if(ZIMBRA_EMAILS[uid]) return ZIMBRA_EMAILS[uid];
+  const safe = uid.toLowerCase().replace('/','_');
+  return safe + '@i-constech.com';
+}
 
 let currentUser='', currentUserName='', currentUserRole='', pendingUserId='', currentMode='existing';
 
@@ -1919,7 +1916,7 @@ async function checkUserId(){
   document.getElementById('newPass1').value='';document.getElementById('newPass2').value='';
   document.getElementById('newPass1').focus();
 }
-async function doLogin(){
+ async function doLogin(){
   let uid=document.getElementById('loginUser').value.trim().toUpperCase().replace(/\s+/g,'');
   const p=document.getElementById('loginPass').value;
   if(!uid){showErr('⚠️ Please enter your Employee ID.');return;}
@@ -1927,51 +1924,105 @@ async function doLogin(){
   if(!USER_ACCOUNTS[uid]){uid=uid.replace(/^([A-Z]+)(\d+)$/,'$1/$2');}
   const account=USER_ACCOUNTS[uid];
   if(!account){showErr('❌ Employee ID not recognised. Try format: ICTE/974');return;}
-  const users=await getUsers();
-  if(!users[uid]){
-    const everLoggedIn=localStorage.getItem('drt_login_done_'+uid);
-    // Also try a direct Firebase lookup before concluding it's a first-timer
-    let fbHasUser=false;
+
+  const email = empIdToEmail(uid);
+
+  // ── Try Firebase Auth first ──
+  if(window._fbReady && window._fbAuth){
     try{
-      if(window._fbReady){
-        const fbUsers=await fbGetWithTimeout('drt_users',3000);
-        if(fbUsers){
-          const parsed=typeof fbUsers==='string'?JSON.parse(fbUsers):(fbUsers&&typeof fbUsers==='object'?fbUsers:{});
-          if(parsed[uid]){fbHasUser=true;users[uid]=parsed[uid];try{localStorage.setItem('drt_users',JSON.stringify(parsed));}catch(e){}}
-        }
-      }
-    }catch(e){}
-    if(fbHasUser){
-      if(users[uid]===hashPwd(p)){launchApp(uid);}
-      else{showErr('❌ Incorrect password. <span style="cursor:pointer;text-decoration:underline;color:var(--teal-dark);font-weight:700" onclick="toggleForgot()">Forgot password?</span>');const errEl=document.getElementById('loginErr');if(errEl)errEl.style.display='block';}
+      await window._fbAuth.signInWithEmailAndPassword(email, p);
+      // onAuthStateChanged will fire → launchApp(uid)
       return;
+    }catch(authErr){
+      const code = authErr.code || '';
+      if(code === 'auth/user-not-found'){
+        // User not in Firebase Auth yet → check legacy localStorage
+        const users = await getUsers();
+        if(users[uid] && users[uid] === hashPwd(p)){
+          // Migrate: create Firebase Auth account silently
+          try{
+            await window._fbAuth.createUserWithEmailAndPassword(email, p);
+            // Remove from legacy store after migration
+            delete users[uid];
+            await saveUsers(users);
+            return; // onAuthStateChanged fires
+          }catch(mErr){
+            console.warn('[DRT] Migration failed:', mErr.message);
+          }
+        }
+        // Truly new user
+        selectUserType('new');
+        document.getElementById('loginUserNew').value = document.getElementById('loginUser').value;
+        showErr('👋 First time here? Complete your First Time Setup below.');
+        return;
+      }
+      if(code === 'auth/wrong-password' || code === 'auth/invalid-credential'){
+        showErr('❌ Incorrect password. <span style="cursor:pointer;text-decoration:underline;color:var(--teal-dark);font-weight:700" onclick="toggleForgot()">Forgot password?</span>');
+        document.getElementById('loginErr').style.display='block';
+        return;
+      }
+      if(code === 'auth/too-many-requests'){
+        showErr('⚠️ Too many attempts. Please wait a few minutes and try again.');
+        return;
+      }
+      console.warn('[DRT] Auth error:', authErr.message);
+      // Fall through to legacy if Firebase unreachable
     }
-    if(everLoggedIn){
-      showErr('⚠️ Could not verify credentials right now. Please refresh and try again.');
-    } else {
-      // Truly first time — redirect to First Time Setup
-      selectUserType('new');
-      document.getElementById('loginUserNew').value=document.getElementById('loginUser').value;
-      showErr('👋 First time here? Complete your First Time Setup below.');
-    }
+  }
+
+  // ── Legacy localStorage fallback (offline mode) ──
+  const users = await getUsers();
+  if(!users[uid]){
+    selectUserType('new');
+    document.getElementById('loginUserNew').value = document.getElementById('loginUser').value;
+    showErr('👋 First time here? Complete your First Time Setup below.');
     return;
   }
-  if(users[uid]===hashPwd(p)){launchApp(uid);}
-  else {
+  if(users[uid] === hashPwd(p)){
+    launchApp(uid);
+  } else {
     showErr('❌ Incorrect password. <span style="cursor:pointer;text-decoration:underline;color:var(--teal-dark);font-weight:700" onclick="toggleForgot()">Forgot password?</span>');
-    const errEl=document.getElementById('loginErr');if(errEl)errEl.style.display='block';
+    document.getElementById('loginErr').style.display='block';
   }
 }
+
 async function createAndLogin(){
-  const uid=pendingUserId||document.getElementById('loginUserNew').value.trim();
-  const account=USER_ACCOUNTS[uid];
+  const uid = pendingUserId || document.getElementById('loginUserNew').value.trim().toUpperCase().replace(/\s+/g,'');
+  const account = USER_ACCOUNTS[uid];
   if(!account){showErr('❌ Employee ID not found. Contact your administrator.');return;}
-  const p1=document.getElementById('newPass1').value,p2=document.getElementById('newPass2').value;
-  if(!p1||p1.length<4){showErr('⚠️ Password must be at least 4 characters.');return;}
+  const p1=document.getElementById('newPass1').value;
+  const p2=document.getElementById('newPass2').value;
+  if(!p1||p1.length<6){showErr('⚠️ Password must be at least 6 characters (Firebase requirement).');return;}
   if(p1!==p2){showErr('❌ Passwords do not match.');return;}
-  const users=await getUsers();
+
+  const email = empIdToEmail(uid);
+
+  if(window._fbReady && window._fbAuth){
+    try{
+      await window._fbAuth.createUserWithEmailAndPassword(email, p1);
+      // onAuthStateChanged will fire → launchApp(uid)
+      return;
+    }catch(authErr){
+      const code = authErr.code || '';
+      if(code === 'auth/email-already-in-use'){
+        showErr('ℹ️ Account already exists. Please use the Login tab.');
+        return;
+      }
+      if(code === 'auth/weak-password'){
+        showErr('⚠️ Password too weak. Use at least 6 characters.');
+        return;
+      }
+      console.warn('[DRT] createUser error:', authErr.message);
+      // Fall through to legacy
+    }
+  }
+
+  // ── Legacy localStorage fallback ──
+  const users = await getUsers();
   if(users[uid]){showErr('ℹ️ Already registered. Please login.');return;}
-  users[uid]=hashPwd(p1);await saveUsers(users);launchApp(uid);
+  users[uid]=hashPwd(p1);
+  await saveUsers(users);
+  launchApp(uid);
 }
 
 function launchApp(uid){
@@ -2088,39 +2139,52 @@ function fpGoBack(){document.getElementById('fpStep2').style.display='none';docu
 async function doSendResetCode(){
   let empId=(document.getElementById('resetEmpId').value||'').trim().toUpperCase().replace(/\s+/g,'');
   const zimbraInput=(document.getElementById('resetZimbra').value||'').trim().toLowerCase();
-
   if(!empId){showErr('⚠️ Please enter your Employee ID.');return;}
   if(!zimbraInput){showErr('⚠️ Please enter your Zimbra ID.');return;}
-
   if(!USER_ACCOUNTS[empId]){empId=empId.replace(/^([A-Z]+)(\d+)$/,'$1/$2');}
   const uid=empId;
   const account=USER_ACCOUNTS[uid];
   if(!account){showErr('❌ Employee ID not found. Try format: ICTE/974');return;}
-
-  // Verify Zimbra ID matches the account
   const expectedZimbra=(ZIMBRA_EMAILS[uid]||'').toLowerCase();
   if(!expectedZimbra){showErr('❌ No Zimbra ID registered for this Employee ID.');return;}
-  if(zimbraInput!==expectedZimbra){
-    showErr('❌ Zimbra ID does not match. Please check and try again.');return;
+  if(zimbraInput!==expectedZimbra){showErr('❌ Zimbra ID does not match. Please check and try again.');return;}
+
+  // ── Firebase Auth: send real password reset email ──
+  if(window._fbReady && window._fbAuth){
+    try{
+      await window._fbAuth.sendPasswordResetEmail(zimbraInput, {
+        url: window.location.href,  // redirect back to the tool after reset
+        handleCodeInApp: false
+      });
+      document.getElementById('fpStep1').style.display='none';
+      document.getElementById('fpStep2').style.display='none';
+      document.getElementById('fpSuccess').style.display='block';
+      document.getElementById('fpSuccess').innerHTML =
+        '✅ Password reset email sent to <strong>' + zimbraInput + '</strong>!<br>'
+        + '<span style="font-size:11px;color:#555;">Check your Zimbra inbox and follow the link to set a new password.</span>';
+      showToast('📧 Reset link sent to ' + zimbraInput);
+      return;
+    }catch(authErr){
+      const code = authErr.code || '';
+      if(code === 'auth/user-not-found'){
+        showErr('⚠️ No account found in Firebase Auth. Please use First Time Setup first.');
+        return;
+      }
+      console.warn('[DRT] sendPasswordResetEmail error:', authErr.message);
+      // Fall through to legacy code-based reset
+    }
   }
 
-  const users=await getUsers();
-  if(!users[uid]){showErr('⚠️ No password set for this ID. Use "First Time Setup" tab instead.');return;}
-
-  // Generate 6-digit code
+  // ── Legacy: show 6-digit code in UI (offline fallback) ──
   _fpResetCode=String(Math.floor(100000+Math.random()*900000));
   _fpResetUid=uid;
   _fpResetExpiry=Date.now()+(15*60*1000);
-
-  // Store in Firebase
   try{
     if(window._fbReady) await fbSet('drt_reset_requests/'+uid.replace('/','_'),{
       code:_fpResetCode, uid:uid, name:account.name,
       expiry:_fpResetExpiry, requestedAt:new Date().toISOString(), status:'pending'
     });
   }catch(e){}
-
-  // Show code ONLY after both ID + Zimbra verified ✅
   document.getElementById('fpEmailHint').innerHTML=
     '<div style="text-align:center;padding:8px 0">'
     +'<div style="font-size:13px;font-weight:800;color:#0a0a0a;margin-bottom:4px">✅ Identity Verified!</div>'
@@ -2131,15 +2195,15 @@ async function doSendResetCode(){
     +'<div style="font-size:10px;color:#666;margin-top:8px;">Copy this code and enter it below</div>'
     +'</div>'
     +'<div style="background:#fff8f0;border:1.5px solid rgba(249,115,22,0.3);border-radius:10px;padding:10px 14px;font-size:11px;color:#c44b00;font-weight:600;line-height:1.7;">'
-    +'⏱ Code expires in <strong>5 seconds</strong><br>'
+    +'⏱ Code expires in <strong>15 minutes</strong><br>'
     +'🔒 Only visible because your Zimbra ID was verified'
     +'</div>'
     +'</div>';
-
   document.getElementById('fpStep1').style.display='none';
   document.getElementById('fpStep2').style.display='block';
   showErr('');
 }
+
 async function doResetPassword(){
   const code=document.getElementById('fpCode').value.trim();const p1=document.getElementById('resetPass1').value;const p2=document.getElementById('resetPass2').value;
   if(!code){showErr('⚠️ Please enter the reset code from your Zimbra mail.');return;}
@@ -2193,7 +2257,12 @@ function doLogout(){
   setTimeout(()=>{const bar=document.getElementById('logout-bar');if(bar)bar.style.width='100%';},50);
   setTimeout(()=>{
     overlay.remove();
-    localStorage.removeItem('drt_session');try{window.storage.delete('drt_session',false);}catch(e){}
+    localStorage.removeItem('drt_session');
+    try{window.storage.delete('drt_session',false);}catch(e){}
+    // Firebase Auth sign-out (async, don't block UI)
+    if(window._fbReady && window._fbAuth){
+      window._fbAuth.signOut().catch(e=>console.warn('[DRT] signOut error',e));
+    }
     document.getElementById('appPage').style.display='none';document.getElementById('loginPage').style.display='flex';
     ['loginUser','loginPass','newPass1','newPass2','resetZimbra','resetPass1','resetPass2','fpCode'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('step2create').style.display='none';document.getElementById('continueWrap').style.display='block';document.getElementById('loginErr').style.display='none';
@@ -2231,8 +2300,40 @@ function fbListen(path,cb){
   return r;
 }
 
+// ── Firestore helpers ──
+async function fsSet(collection, docId, val){
+  if(!window._fbReady||!window._fbFs) return false;
+  try{
+    await window._fbFs.collection(collection).doc(docId).set(
+      typeof val === 'object' ? val : {_data: val},
+      {merge: false}
+    );
+    return true;
+  }catch(e){ console.warn('[DRT] fsSet error', e); return false; }
+}
+
+async function fsGet(collection, docId){
+  if(!window._fbReady||!window._fbFs) return null;
+  try{
+    const snap = await window._fbFs.collection(collection).doc(docId).get();
+    if(!snap.exists) return null;
+    const d = snap.data();
+    return d._data !== undefined ? d._data : d;
+  }catch(e){ console.warn('[DRT] fsGet error', e); return null; }
+}
+
+// Mirror a JSON-serialisable value to both RTDB and Firestore
+async function fsMirror(rtdbPath, fsCollection, fsDocId, val){
+  const json = typeof val === 'string' ? val : JSON.stringify(val);
+  // RTDB (primary real-time)
+  if(window._fbReady) fbSet(rtdbPath, val).catch(()=>{});
+  // Firestore (durable backup, offline support)
+  if(window._fbReady && window._fbFs)
+    fsSet(fsCollection, fsDocId, {_json: json, _ts: Date.now()}).catch(()=>{});
+}
+
 async function loadData(){
-  // FIRST: try Firebase (shared cloud — always the source of truth)
+  // FIRST: try Realtime Database (fastest real-time sync)
   if(window._fbReady){
     try{
       const val=await fbGetWithTimeout('drt_data',5000);
@@ -2246,7 +2347,26 @@ async function loadData(){
       }
     }catch(e){}
   }
-  // SECOND: localStorage fallback (only if Firebase is empty or unavailable)
+  // SECOND: try Firestore (durable backup)
+  if(window._fbReady && window._fbFs){
+    try{
+      const snap = await window._fbFs.collection('drt_data').doc('entries').get();
+      if(snap.exists){
+        const d = snap.data();
+        const json = d._json;
+        if(json){
+          const fsData = JSON.parse(json);
+          if(Array.isArray(fsData) && fsData.length > 0){
+            data = fsData;
+            fbSet('drt_data', data).catch(()=>{});
+            try{localStorage.setItem('drt_data',json);}catch(e){}
+            return;
+          }
+        }
+      }
+    }catch(e){ console.warn('[DRT] Firestore loadData error', e); }
+  }
+  // THIRD: localStorage fallback
   try{const ls=localStorage.getItem('drt_data');if(ls){data=JSON.parse(ls);return;}}catch{data=[];}
   data=[];
 }
@@ -2263,6 +2383,12 @@ async function saveData(){
   // Always also save locally as backup
   try{await window.storage.set('drt_data',json,true);}catch(e){}
   try{localStorage.setItem('drt_data',json);}catch(e){}
+  // Firestore mirror (durable backup, supports offline)
+  if(window._fbReady && window._fbFs){
+    window._fbFs.collection('drt_data').doc('entries')
+      .set({_json: json, _ts: Date.now(), _count: data.length})
+      .catch(e=>console.warn('[DRT] Firestore saveData error',e));
+  }
   updateLoginChips();checkStorageUsage();
   if(fbOk) showToast('✅ Report saved & synced to all members!');
 }
@@ -2394,7 +2520,10 @@ function populateNameDropdowns(){
   const expName=document.getElementById('export-name');
   if(expName&&isSME){expName.innerHTML='<option value="">All Members</option>';NAMES.forEach(n=>{const o=document.createElement('option');o.value=n;o.textContent=n;expName.appendChild(o);});}
 }
-async function initApp(){await loadData();addRow();addRow();addRow();const _fd=document.getElementById('filter-date');if(_fd&&!_fd.value)_fd.value=new Date().toISOString().split('T')[0];renderView();renderSummary();updateTotals('rows-body');updateLoginChips();checkStorageUsage();}
+async function initApp(){
+  await loadData();
+  syncQualityFromFirebase().catch(()=>{}); // background quality sync
+  addRow();addRow();addRow();const _fd=document.getElementById('filter-date');if(_fd&&!_fd.value)_fd.value=new Date().toISOString().split('T')[0];renderView();renderSummary();updateTotals('rows-body');updateLoginChips();checkStorageUsage();}
 
 function switchTab(t){
   document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['add','view','monthly','quality','rating','consolidation','summary'][i]===t));
@@ -3496,8 +3625,56 @@ function populateYearSelect(selId){
 }
 
 // ── Quality data helpers ──
-function loadQualityData(){try{return JSON.parse(localStorage.getItem('drt_quality')||'[]');}catch{return[];}}
-function saveQualityDataToStorage(rows){localStorage.setItem('drt_quality',JSON.stringify(rows));}
+function saveQualityDataToStorage(rows){
+  const json = JSON.stringify(rows);
+  localStorage.setItem('drt_quality', json);
+  // Mirror to RTDB + Firestore
+  if(window._fbReady){
+    fbSet('drt_quality', rows).catch(()=>{});
+    if(window._fbFs){
+      window._fbFs.collection('drt_quality').doc('rows')
+        .set({_json: json, _ts: Date.now()}).catch(()=>{});
+    }
+  }
+}
+
+// ── Quality data helpers ──
+
+function loadQualityData(){
+  // Sync call — returns localStorage cache; background-sync from Firebase handled separately
+  try{return JSON.parse(localStorage.getItem('drt_quality')||'[]');}catch{return[];}
+}
+
+// Called once on app init to backfill quality data from Firebase if localStorage is empty
+async function syncQualityFromFirebase(){
+  const local = loadQualityData();
+  if(local.length > 0) return; // already have data locally
+  // Try RTDB
+  try{
+    if(window._fbReady){
+      const val = await fbGetWithTimeout('drt_quality', 3000);
+      if(val){
+        const arr = Array.isArray(val) ? val : [];
+        if(arr.length > 0){
+          localStorage.setItem('drt_quality', JSON.stringify(arr));
+          return;
+        }
+      }
+    }
+  }catch(e){}
+  // Try Firestore
+  try{
+    if(window._fbReady && window._fbFs){
+      const snap = await window._fbFs.collection('drt_quality').doc('rows').get();
+      if(snap.exists){
+        const d = snap.data();
+        if(d._json){
+          localStorage.setItem('drt_quality', d._json);
+        }
+      }
+    }
+  }catch(e){}
+}
 
 // ══ LATE LOGIN STORAGE ══
 function loadLateLogins(){try{return JSON.parse(localStorage.getItem('drt_late_logins')||'{}');}catch{return{};}}
@@ -4206,43 +4383,97 @@ document.addEventListener('click',e=>{if(!e.target.closest('.process-search-wrap
 selectUserType('existing');initQuotes();updateLoginChips();
 
 // ══ SESSION RESTORE ON REFRESH ══
-(async function(){
-  let savedUid=localStorage.getItem('drt_session');
-  if(!savedUid){try{const r=await window.storage.get('drt_session',false);savedUid=r?r.value:null;}catch(e){}}
-  if(savedUid&&USER_ACCOUNTS[savedUid]){
-    // Quick check: has this user ever logged in? (localStorage is instant)
-    const everLoggedIn=localStorage.getItem('drt_login_done_'+savedUid);
-    const users=await getUsers();
-    // Allow restore if: (a) password verified, OR (b) they've logged in before on this device
-    if(users[savedUid]||everLoggedIn){
-      currentUser=savedUid;
-      const account=USER_ACCOUNTS[savedUid]||{name:savedUid,role:'Process Associate'};
-      currentUserName=account.name;currentUserRole=account.role;
-      await loadData();
-      document.getElementById('loginPage').style.display='none';
-      const ap=document.getElementById('appPage');ap.style.display='flex';ap.style.height='auto';
-      const isSME=(currentUserRole==='SME');
-      const roleBadge=isSME?`<span class="sme-badge">⭐ SME</span>`:`<span class="user-role-tag">${currentUserRole==='Process Analyst'?'Trainee':currentUserRole.replace('Process ','').replace('Associate','Assoc.')}</span>`;
-      document.getElementById('navUser').innerHTML=`${account.name} ${roleBadge}`;
-      const nd=document.getElementById('navDate');if(nd){const now=new Date();nd.textContent=now.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'});}
-      const fRole=document.getElementById('f-role');
-      if(!isSME){if(fRole){fRole.value=currentUserRole;fRole.disabled=true;}}else{if(fRole)fRole.disabled=false;}
-      const smeBar=document.getElementById('sme-dl-bar');const accessNote=document.getElementById('access-note');const resourceBar=document.getElementById('resource-dl-bar');
-      if(isSME){if(smeBar)smeBar.style.display='flex';if(accessNote)accessNote.style.display='none';if(resourceBar)resourceBar.style.display='none';}
-      else{if(smeBar)smeBar.style.display='none';if(accessNote){accessNote.style.display='flex';accessNote.innerHTML='✏️ You can view all team reports in order. You can edit or delete only your own entries.';}if(resourceBar)resourceBar.style.display='flex';}
-      document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
-     const ratingTab=document.querySelector('.tab[onclick*="rating"]');
-      if(ratingTab) ratingTab.style.display=isSME?'':'none';
-      const consolidationTab=document.querySelector('.tab[onclick*="consolidation"]');
-      if(consolidationTab) consolidationTab.style.display=isSME?'':'none';
-      populateNameDropdowns();
-      addRow();addRow();addRow();renderView();renderSummary();updateTotals('rows-body');updateLoginChips();checkStorageUsage();
-      switchTab('add');
-      startRealtimeSync();
-      showSyncStatus();
-      eodStartMonitor();
+// ── Firebase Auth state observer ──
+// Fires on sign-in, sign-out, and page load if already signed in.
+// This is the primary session restore mechanism when Firebase Auth is available.
+(function(){
+  if(!window._fbReady || !window._fbAuth) return;
+  window._fbAuth.onAuthStateChanged(async function(user){
+    if(!user) return; // signed out — login page already showing
+
+    // Map Firebase Auth email back to Employee ID
+    const email = (user.email||'').toLowerCase();
+    let uid = Object.keys(ZIMBRA_EMAILS).find(k=>(ZIMBRA_EMAILS[k]||'').toLowerCase()===email);
+    if(!uid){
+      // Fallback: derive from email pattern  e.g. icte_974@... → ICTE/974
+      const safe = email.split('@')[0];
+      uid = safe.toUpperCase().replace('_','/');
     }
-  }
+    if(!USER_ACCOUNTS[uid]){
+      console.warn('[DRT] Auth user not in USER_ACCOUNTS:', email, uid);
+      return;
+    }
+
+    // If app page is already visible (session restored), skip re-launch
+    const ap = document.getElementById('appPage');
+    if(ap && ap.style.display !== 'none') return;
+
+    // Store session locally for offline restore
+    try{localStorage.setItem('drt_session', uid);}catch(e){}
+
+    // Launch app
+    currentUser = uid;
+    const account = USER_ACCOUNTS[uid];
+    currentUserName = account.name;
+    currentUserRole = account.role;
+
+    // Check if login page is still visible → run full launchApp animation
+    const lp = document.getElementById('loginPage');
+    if(lp && lp.style.display !== 'none'){
+      launchApp(uid);
+    }
+  });
+})();
+
+// ── Offline / localStorage session restore (fallback when Firebase Auth is unavailable) ──
+(async function(){
+  // Skip if Firebase Auth already restored the session
+  const ap = document.getElementById('appPage');
+  if(ap && ap.style.display !== 'none') return;
+  if(window._fbReady && window._fbAuth && window._fbAuth.currentUser) return;
+
+  let savedUid = localStorage.getItem('drt_session');
+  if(!savedUid){ try{ const r=await window.storage.get('drt_session',false); savedUid=r?r.value:null; }catch(e){} }
+  if(!savedUid || !USER_ACCOUNTS[savedUid]) return;
+
+  const everLoggedIn = localStorage.getItem('drt_login_done_'+savedUid);
+  const users = await getUsers();
+  if(!users[savedUid] && !everLoggedIn) return; // never authenticated
+
+  currentUser = savedUid;
+  const account = USER_ACCOUNTS[savedUid] || {name:savedUid, role:'Process Associate'};
+  currentUserName = account.name;
+  currentUserRole = account.role;
+
+  await loadData();
+  document.getElementById('loginPage').style.display = 'none';
+  const appPg = document.getElementById('appPage');
+  appPg.style.display = 'flex'; appPg.style.height = 'auto';
+  const isSME = (currentUserRole === 'SME');
+  const roleBadge = isSME
+    ? `<span class="sme-badge">⭐ SME</span>`
+    : `<span class="user-role-tag">${currentUserRole==='Process Analyst'?'Trainee':currentUserRole.replace('Process ','').replace('Associate','Assoc.')}</span>`;
+  document.getElementById('navUser').innerHTML = `${account.name} ${roleBadge}`;
+  const nd = document.getElementById('navDate');
+  if(nd){ const now=new Date(); nd.textContent=now.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}); }
+  const fRole = document.getElementById('f-role');
+  if(!isSME){ if(fRole){fRole.value=currentUserRole;fRole.disabled=true;} }
+  else{ if(fRole)fRole.disabled=false; }
+  const smeBar=document.getElementById('sme-dl-bar');
+  const accessNote=document.getElementById('access-note');
+  const resourceBar=document.getElementById('resource-dl-bar');
+  if(isSME){ if(smeBar)smeBar.style.display='flex'; if(accessNote)accessNote.style.display='none'; if(resourceBar)resourceBar.style.display='none'; }
+  else{ if(smeBar)smeBar.style.display='none'; if(accessNote){accessNote.style.display='flex';accessNote.innerHTML='✏️ You can view all team reports in order. You can edit or delete only your own entries.';} if(resourceBar)resourceBar.style.display='flex'; }
+  document.getElementById('f-date').value = new Date().toISOString().split('T')[0];
+  const ratingTab = document.querySelector('.tab[onclick*="rating"]');
+  if(ratingTab) ratingTab.style.display = isSME ? '' : 'none';
+  const consolidationTab = document.querySelector('.tab[onclick*="consolidation"]');
+  if(consolidationTab) consolidationTab.style.display = isSME ? '' : 'none';
+  populateNameDropdowns();
+  addRow(); addRow(); addRow();
+  renderView(); renderSummary(); updateTotals('rows-body'); updateLoginChips(); checkStorageUsage();
+  switchTab('add');
+  startRealtimeSync(); showSyncStatus(); eodStartMonitor();
 })();
 
 function updateLoginChips(){
@@ -4820,6 +5051,10 @@ async function saveProcessesToFirebase(){
   try{
     const json = JSON.stringify(PROCESSES);
     if(window._fbReady){ await fbSet('drt_processes', json); }
+    if(window._fbReady && window._fbFs){
+      await window._fbFs.collection('drt_processes').doc('list')
+        .set({_json: json, _ts: Date.now()});
+    }
     try{ localStorage.setItem('drt_processes', json); }catch(e){}
     showToast('✅ All process changes saved successfully!');
   }catch(e){
@@ -5011,8 +5246,7 @@ function toggleLightMode(){
 const _origInitApp = typeof initApp === 'function' ? initApp : null;
 window.addEventListener('DOMContentLoaded', async () => {
   await loadCustomProcesses();
-  await loadCustomMembers();
-  applyWeeklyTheme();
+  await loadCustomMembers();   
 });
 
 /* ===== WEEKLY THEME ENGINE ===== */
@@ -5469,44 +5703,6 @@ function deleteMember(id){
   renderMemberList();
   if(typeof populateNameDropdowns === 'function') populateNameDropdowns();
   showToast('Member deleted! Click Save All Changes to persist.');
-}
-
-async function saveMembersToFirebase(){
-  try{
-    var members = getRuntimeMembers();
-    var json = JSON.stringify(members);
-    if(window._fbReady){ await fbSet('drt_members', json); }
-    try{ localStorage.setItem('drt_members', json); }catch(e){}
-    showToast('All member changes saved successfully!');
-  }catch(e){
-    showToast('Save failed: ' + e.message);
-  }
-}
-
-/* ═══════════════════════════════════════════════
-   NEON RGB ANIMATED CURSOR
-═══════════════════════════════════════════════ */
-
-  try{
-    var saved = null;
-    if(window._fbReady){ saved = await fbGetWithTimeout('drt_members', 3000); }
-    if(!saved){ try{ saved = localStorage.getItem('drt_members'); }catch(e){} }
-    if(saved){
-      var obj = typeof saved === 'string' ? JSON.parse(saved) : saved;
-      if(obj && typeof obj === 'object' && Object.keys(obj).length > 0){
-        RUNTIME_MEMBERS = {};
-        Object.keys(obj).forEach(function(id){
-          var m = obj[id];
-          RUNTIME_MEMBERS[id] = m;
-          USER_ACCOUNTS[id] = {name: m.name, role: m.role};
-        });
-        NAMES.length = 0;
-        Object.values(obj).forEach(function(m){ if(m.name && !NAMES.includes(m.name)) NAMES.push(m.name); });
-        // Preserve the hardcoded display order — only add new names not already in the list
-        Object.values(obj).forEach(function(m){ if(m.role !== 'SME' && m.name && !SME_VIEW_ORDER.includes(m.name)) SME_VIEW_ORDER.push(m.name); });
-      }
-    }
-  }catch(e){ console.warn('loadCustomMembers:', e); }
 }
 </script>
 
