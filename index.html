@@ -2529,7 +2529,12 @@ function switchTab(t){
   document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['add','view','monthly','quality','rating','consolidation','summary'][i]===t));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
-  if(t==='view'){const fd=document.getElementById('filter-date');if(fd&&!fd.value)fd.value=new Date().toISOString().split('T')[0];renderView();}
+  if(t==='view'){
+    const fd=document.getElementById('filter-date');
+    if(fd&&!fd.value)fd.value=new Date().toISOString().split('T')[0];
+    renderView();
+    setTimeout(()=>checkWrongDuration(), 400);
+  }
   if(t==='monthly'){initMonthlyFilters();renderMonthly();}
   if(t==='quality')initQualityFilters();
   if(t==='rating')initRatingFilters();
@@ -5047,22 +5052,6 @@ function deleteProcess(idx){
   showToast('🗑 Process deleted! Click Save All Changes to persist.');
 }
 
-async function saveProcessesToFirebase(){
-  try{
-    const json = JSON.stringify(PROCESSES);
-    if(window._fbReady){ await fbSet('drt_processes', json); }
-    if(window._fbReady && window._fbFs){
-      await window._fbFs.collection('drt_processes').doc('list')
-        .set({_json: json, _ts: Date.now()});
-    }
-    try{ localStorage.setItem('drt_processes', json); }catch(e){}
-    showToast('✅ All process changes saved successfully!');
-  }catch(e){
-    showToast('⚠️ Save failed: ' + e.message);
-  }
-}
-
-// Load custom processes from Firebase/localStorage on startup
 async function loadCustomProcesses(){
   try{
     let saved = null;
@@ -5070,12 +5059,61 @@ async function loadCustomProcesses(){
     if(!saved){ try{ saved = localStorage.getItem('drt_processes'); }catch(e){} }
     if(saved){
       const arr = typeof saved === 'string' ? JSON.parse(saved) : saved;
-      if(Array.isArray(arr) && arr.length > 0){
+      if(Array.isArray(arr) && arr.length){
         PROCESSES.length = 0;
-        arr.forEach(p => { PROCESSES.push(p); PROCESS_MAP[p.process] = p; });
+        Object.keys(PROCESS_MAP).forEach(k=>delete PROCESS_MAP[k]);
+        QUALITY_PROCESSES.length = 0;
+        arr.forEach(p=>{
+          PROCESSES.push(p);
+          PROCESS_MAP[p.process] = p;
+          QUALITY_PROCESSES.push(p.process);
+        });
       }
     }
   }catch(e){ console.warn('loadCustomProcesses:', e); }
+}
+
+async function saveProcessesToFirebase(){
+  try{
+    const json = JSON.stringify(PROCESSES);
+    if(window._fbReady){ await fbSet('drt_processes', json); }
+    try{ localStorage.setItem('drt_processes', json); }catch(e){}
+    showToast('✅ Process changes saved successfully!');
+  }catch(e){
+    showToast('⚠️ Save failed: ' + e.message);
+  }
+}
+
+async function saveMembersToFirebase(){
+  try{
+    const members = getRuntimeMembers();
+    const json = JSON.stringify(members);
+    if(window._fbReady){ await fbSet('drt_members', json); }
+    try{ localStorage.setItem('drt_members', json); }catch(e){}
+    showToast('✅ Member changes saved successfully!');
+  }catch(e){
+    showToast('⚠️ Save failed: ' + e.message);
+  }
+}
+
+async function loadCustomMembers(){
+  try{
+    let saved = null;
+    if(window._fbReady){ saved = await fbGetWithTimeout('drt_members', 3000); }
+    if(!saved){ try{ saved = localStorage.getItem('drt_members'); }catch(e){} }
+    if(saved){
+      const obj = typeof saved === 'string' ? JSON.parse(saved) : saved;
+      if(obj && typeof obj === 'object'){
+        Object.keys(obj).forEach(id=>{
+          USER_ACCOUNTS[id] = obj[id];
+          if(!NAMES.includes(obj[id].name)) NAMES.push(obj[id].name);
+          if(obj[id].role !== 'SME' && !SME_VIEW_ORDER.includes(obj[id].name))
+            SME_VIEW_ORDER.push(obj[id].name);
+        });
+        RUNTIME_MEMBERS = null; // reset cache
+      }
+    }
+  }catch(e){ console.warn('loadCustomMembers:', e); }
 }
 
 /* ===== EOD REPORT REMINDER POPUP ===== */
@@ -5136,7 +5174,6 @@ async function loadCustomProcesses(){
 })();
 
 let _eodInterval=null;
-let _eodDismissedUntil=0; // timestamp — user dismissed, snooze 10 min
 
 function eodGetMissing(){
   const today=new Date().toISOString().split('T')[0];
@@ -5152,21 +5189,31 @@ function eodGetMissing(){
 }
 
 function eodCheck(){
-  if(!currentUserName)return; // not logged in
-  const now=new Date();
-  const h=now.getHours(),min=now.getMinutes();
-  const isPast6PM=(h>=18); // 6:00 PM onwards
-  if(!isPast6PM){clearInterval(_eodInterval);_eodInterval=null;return;}
-  // If user snoozed, wait
-  if(Date.now()<_eodDismissedUntil)return;
-  const missing=eodGetMissing();
-  if(missing.length===0){
-    // All done — if popup is open show success then auto-close
-    const ov=document.getElementById('eod-overlay');
-    if(ov&&ov.classList.contains('show'))eodShowAllDone();
+  if(!currentUserName) return;
+  const now = new Date();
+  const h = now.getHours(), min = now.getMinutes();
+  const totalMins = h * 60 + min;
+  const isSMEUser = (currentUserRole === 'SME');
+  const triggerMins = isSMEUser ? 18*60+15 : 18*60+5; // SME=6:15PM, Resources=6:05PM
+  const isPast6PM = (totalMins >= triggerMins);
+  if(!isPast6PM) return;
+
+  // ── Once-per-day dismiss tracking ──
+  const today = new Date().toISOString().split('T')[0];
+  const dismissKey = 'drt_eod_dismissed_' + currentUser + '_' + today;
+  if(localStorage.getItem(dismissKey)) return; // already dismissed today
+
+  const missing = eodGetMissing();
+  if(missing.length === 0){
+    const ov = document.getElementById('eod-overlay');
+    if(ov && ov.classList.contains('show')) eodShowAllDone();
+    if(isSMEUser) eodCheckUnderreported();
+    if(isSMEUser) setTimeout(()=>checkWrongDuration(), 800);
     return;
   }
   eodShowPopup(missing);
+  if(isSMEUser) setTimeout(()=>eodCheckUnderreported(), 800);
+  if(isSMEUser) setTimeout(()=>checkWrongDuration(), 1600);
 }
 
 function eodShowPopup(missing){
@@ -5195,27 +5242,206 @@ function eodShowPopup(missing){
   ov.classList.add('show');
 }
 
-function eodShowAllDone(){
-  const list=document.getElementById('eod-missing-list');
-  const allDone=document.getElementById('eod-all-done');
-  const subText=document.getElementById('eod-sub-text');
-  list.style.display='none';
-  subText.style.display='none';
-  allDone.style.display='block';
-  setTimeout(()=>{
-    document.getElementById('eod-overlay').classList.remove('show');
-  },2200);
-}
-
 function eodDismiss(){
   document.getElementById('eod-overlay').classList.remove('show');
-  _eodDismissedUntil=Date.now()+(10*60*1000); // snooze 10 minutes
+  const today = new Date().toISOString().split('T')[0];
+  const dismissKey = 'drt_eod_dismissed_' + currentUser + '_' + today;
+  localStorage.setItem(dismissKey, '1');
 }
 
 function eodStartMonitor(){
-  if(_eodInterval)clearInterval(_eodInterval);
-  eodCheck(); // immediate check on login
-  _eodInterval=setInterval(eodCheck,60*1000); // re-check every minute
+  if(_eodInterval) clearInterval(_eodInterval);
+  eodCheck();
+  _eodInterval = setInterval(eodCheck, 60000);
+}
+
+function eodShowAllDone(){
+  const ov=document.getElementById('eod-overlay');
+  const list=document.getElementById('eod-missing-list');
+  const allDone=document.getElementById('eod-all-done');
+  const subText=document.getElementById('eod-sub-text');
+  if(list) list.style.display='none';
+  if(subText) subText.style.display='none';
+  if(allDone) allDone.style.display='block';
+  if(ov) ov.classList.add('show');
+}
+
+function eodCheckUnderreported(){
+  if(currentUserRole !== 'SME') return;
+  const today = new Date().toISOString().split('T')[0];
+  if(localStorage.getItem('drt_underreport_dismissed_' + today)) return;
+
+  const EXPECTED_HOURS_MAP = {
+    'One Hour Permission - Morning': 7.00,
+    'One Hour Permission - Evening': 7.00,
+    'Two Hours Permission - Morning': 6.00,
+    'Two Hours Permission - Evening': 6.00,
+    'Special Permission': 7.00,
+    'Half Day Leave - Morning (Casual Leave)': 4.00,
+    'Half Day Leave - Noon (Casual Leave)': 4.00,
+    'Half Day Leave - Morning (Comp-off)': 4.00,
+    'Half Day Leave - Noon (Comp-off)': 4.00,
+    'Half Day Leave - Morning (L.O.P)': 4.00,
+    'Half Day Leave - Noon (L.O.P)': 4.00,
+    'Casual Leave': 0.00,
+    'Sick Leave': 0.00,
+    'L.O.P': 0.00,
+    '☺ Compensatory Leave ☺': 0.00
+  };
+
+  const flagged = [];
+
+  SME_VIEW_ORDER.forEach(nm => {
+    const todayEntries = data.filter(e => e.date === today && e.name === nm);
+    if(!todayEntries.length) return;
+
+    const allRows = todayEntries.flatMap(e => e.rows || []);
+
+    let expected = 8.00;
+    let isFullDayOff = false;
+    allRows.forEach(r => {
+      const proc = r.process || '';
+      if(EXPECTED_HOURS_MAP.hasOwnProperty(proc)){
+        const val = EXPECTED_HOURS_MAP[proc];
+        if(val === 0.00) isFullDayOff = true;
+        if(val < expected) expected = val;
+      }
+    });
+
+    if(isFullDayOff) return;
+
+    let actual = 0;
+    allRows.forEach(r => {
+      const type = getProcessType(r.process || '');
+      if(type === 'leave') return;
+      actual += parseFloat(r.duration) || 0;
+    });
+
+    if(actual < expected){
+      flagged.push({ name: nm, actual: actual.toFixed(2), expected: expected.toFixed(2), short: (expected - actual).toFixed(2) });
+    }
+  });
+
+  if(!flagged.length) return;
+
+  let ov = document.getElementById('eod-underreport-overlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'eod-underreport-overlay';
+    ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:8100;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+    ov.innerHTML = `
+      <div style="background:#fff;border-radius:18px;width:94%;max-width:460px;box-shadow:0 24px 64px rgba(0,0,0,0.35);overflow:hidden;animation:eodIn .35s cubic-bezier(.22,1,.36,1)">
+        <div style="background:linear-gradient(135deg,#e67e22,#d35400);padding:20px 24px 16px;display:flex;align-items:center;gap:12px;">
+          <div style="font-size:28px">⏱️</div>
+          <div>
+            <h3 style="font-family:var(--font-head);font-size:17px;font-weight:800;color:#fff;margin:0 0 2px">Under-Reported Hours</h3>
+            <p style="font-size:11px;color:rgba(255,255,255,0.75);margin:0">Resources below their expected hours for today</p>
+          </div>
+        </div>
+        <div style="padding:16px 22px;">
+          <ul id="underreport-list" style="list-style:none;padding:0;margin:0 0 14px;max-height:260px;overflow-y:auto;"></ul>
+          <p style="font-size:10.5px;color:#8fa3b1;margin:0;line-height:1.6">⚠️ Leave-adjusted expected hours: Full day off = exempt, Half day = 4.00h, 1-hr permission = 7.00h, 2-hr permission = 6.00h, otherwise 8.00h.</p>
+        </div>
+        <div style="padding:10px 22px 18px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #f0f0f0">
+          <button onclick="(function(){
+            document.getElementById('eod-underreport-overlay').style.display='none';
+            const today=new Date().toISOString().split('T')[0];
+            localStorage.setItem('drt_underreport_dismissed_'+today,'1');
+          })()" style="padding:8px 22px;border-radius:9px;border:1.5px solid #ddd;background:#fff;font-size:12px;font-weight:700;color:#666;cursor:pointer;font-family:var(--font-body)">Dismiss</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+  }
+
+  const list = document.getElementById('underreport-list');
+  list.innerHTML = flagged.map(f => {
+    const initials = f.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    return `<li style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;margin-bottom:6px;background:#fff8f0;border:1px solid #fed7aa;">
+      <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#e67e22,#d35400);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:700;color:#7a4a00">${f.name}</div>
+        <div style="font-size:11px;color:#c44b00;margin-top:2px">
+          Reported: <b>${f.actual}h</b> &nbsp;·&nbsp; Expected: <b>${f.expected}h</b> &nbsp;·&nbsp; Short by: <b style="color:#dc2626">${f.short}h</b>
+        </div>
+      </div>
+    </li>`;
+  }).join('');
+
+  ov.style.display = 'flex';
+}
+
+function checkWrongDuration(){
+  if(currentUserRole !== 'SME') return;
+  const today = new Date().toISOString().split('T')[0];
+  if(localStorage.getItem('drt_wrongdur_dismissed_' + today)) return;
+  const flagged = [];
+
+  SME_VIEW_ORDER.forEach(nm => {
+  const todayEntries = data.filter(e => e.date === today && e.name === nm);
+    if(!todayEntries.length) return;
+
+    const allRows = todayEntries.flatMap(e => e.rows || []);
+    let maxDuration = 0;
+
+    allRows.forEach(r => {
+      const type = getProcessType(r.process || '');
+      if(type !== 'normal') return;
+      const dur = parseFloat(r.duration) || 0;
+      if(dur > 8.0 && dur > maxDuration) maxDuration = dur;
+    });
+
+    if(maxDuration > 0) {
+      flagged.push({ name: nm, duration: maxDuration.toFixed(2) });
+    }
+  });
+
+  if(!flagged.length) return;
+
+  let ov = document.getElementById('eod-wrongdur-overlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'eod-wrongdur-overlay';
+    ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:8200;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+    ov.innerHTML = `
+      <div style="background:#fff;border-radius:18px;width:94%;max-width:460px;box-shadow:0 24px 64px rgba(0,0,0,0.35);overflow:hidden;animation:eodIn .35s cubic-bezier(.22,1,.36,1)">
+        <div style="background:linear-gradient(135deg,#dc2626,#991b1b);padding:20px 24px 16px;display:flex;align-items:center;gap:12px;">
+          <div style="font-size:28px">🚨</div>
+          <div>
+            <h3 style="font-family:var(--font-head);font-size:17px;font-weight:800;color:#fff;margin:0 0 2px">Wrong Duration Detected</h3>
+            <p style="font-size:11px;color:rgba(255,255,255,0.75);margin:0">Resources with a single row exceeding 8 hours</p>
+          </div>
+        </div>
+        <div style="padding:16px 22px;">
+          <ul id="wrongdur-list" style="list-style:none;padding:0;margin:0 0 14px;max-height:260px;overflow-y:auto;"></ul>
+          <p style="font-size:10.5px;color:#8fa3b1;margin:0;line-height:1.6">⚠️ A single process row should not exceed 8.00h. Please ask the resource to correct their entry.</p>
+        </div>
+        <div style="padding:10px 22px 18px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid #f0f0f0">
+          <button onclick="(function(){
+            document.getElementById('eod-wrongdur-overlay').style.display='none';
+            const today=new Date().toISOString().split('T')[0];
+            localStorage.setItem('drt_wrongdur_dismissed_'+today,'1');
+          })()" style="padding:8px 22px;border-radius:9px;border:1.5px solid #ddd;background:#fff;font-size:12px;font-weight:700;color:#666;cursor:pointer;font-family:var(--font-body)">Dismiss</button>
+        </div>
+      </div>`;
+    document.body.appendChild(ov);
+  }
+
+  const list = document.getElementById('wrongdur-list');
+  list.innerHTML = flagged.map(f => {
+    const initials = f.name.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+    const excess = (parseFloat(f.duration) - 8).toFixed(2);
+    return `<li style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:9px;margin-bottom:6px;background:#fff5f5;border:1px solid #fca5a5;">
+      <div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#dc2626,#991b1b);color:#fff;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:700;color:#7f1d1d">${f.name}</div>
+        <div style="font-size:11px;color:#dc2626;margin-top:2px">
+          Duration entered: <b>${f.duration}h</b> &nbsp;·&nbsp; Excess: <b style="color:#991b1b">+${excess}h</b>
+        </div>
+      </div>
+    </li>`;
+  }).join('');
+
+  ov.style.display = 'flex';
 }
 
 /* ═══ LIGHT / DARK MODE TOGGLE ═══ */
@@ -5704,6 +5930,8 @@ function deleteMember(id){
   if(typeof populateNameDropdowns === 'function') populateNameDropdowns();
   showToast('Member deleted! Click Save All Changes to persist.');
 }
+
+
 </script>
 
 <!-- ── Neon RGB Cursor Elements ── -->
