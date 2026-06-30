@@ -2529,11 +2529,14 @@ function switchTab(t){
   document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['add','view','monthly','quality','rating','consolidation','summary'][i]===t));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
-  if(t==='view'){
+ if(t==='view'){
     const fd=document.getElementById('filter-date');
     if(fd&&!fd.value)fd.value=new Date().toISOString().split('T')[0];
     renderView();
-    setTimeout(()=>checkWrongDuration(), 400);
+    if(currentUserRole==='SME'){
+      setTimeout(()=>eodCheckUnderreported(), 400);
+      setTimeout(()=>checkWrongDuration(), 900);
+    }
   }
   if(t==='monthly'){initMonthlyFilters();renderMonthly();}
   if(t==='quality')initQualityFilters();
