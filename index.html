@@ -13,7 +13,7 @@
 #neon-cursor-dot,#neon-cursor-ring,.spark-trail{display:none!important;}
 
 :root{
-  --teal:#ffffff;--teal-dark:#cccccc;--teal-light:#ffffff;
+  --teal:#2563eb;--teal-dark:#1d4ed8;--teal-light:#bfdbfe;
   --slate:#0f172a;--slate-mid:#1e293b;--slate-light:#334155;
   --amber:#d97706;--amber-light:#fde68a;
   --rose:#dc2626;--rose-light:#fca5a5;
@@ -113,7 +113,7 @@ body.light-mode #bubbleCanvas{opacity:0.55;}
 /* ===== LEFT PANEL — Deep Cosmic Aurora ===== */
 .split-left{
   width:50%;height:100vh;
-  background:linear-gradient(135deg,#000000 0%,#0a0a0a 35%,#050505 70%,#000000 100%);
+  background:linear-gradient(135deg,#080808 0%,#0f0a00 35%,#0a0500 70%,#050505 100%);
   position:relative;overflow:hidden;display:flex;flex-direction:column;
   justify-content:space-between;padding:2.8rem 3rem;
   transition:transform 0.9s cubic-bezier(0.76,0,0.24,1);z-index:2;flex-shrink:0;
@@ -150,7 +150,8 @@ body.light-mode #bubbleCanvas{opacity:0.55;}
 .hero-heading{font-family:var(--font-head);font-size:clamp(44px,5vw,68px);font-weight:900;
   color:#fff;line-height:0.93;letter-spacing:-1px;margin-bottom:1.4rem;}
 .hero-heading em{font-style:normal;display:block;font-weight:900;
-  color:#ffffff;}
+  background:linear-gradient(135deg,#93c5fd,#2563eb,#1e3a8a);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 
 .hero-desc{font-size:13px;color:rgba(255,255,255,0.38);line-height:1.7;max-width:320px;font-weight:400;}
 
@@ -1098,7 +1099,6 @@ window.FX_THEME_DEFS = [
   { bg: '#0c0800', c1: [234, 168, 58], c2: [185, 117, 15],  effect: 'dustmotes' }, // 5 Golden Hour
   { bg: '#0a0002', c1: [214, 51, 94],  c2: [160, 31, 67],   effect: 'sparks'    }, // 6 Garnet
   { bg: '#04000e', c1: [124, 92, 255], c2: [84, 54, 184],   effect: 'nebula'    }, // 7 Amethyst
-  { bg: '#000000',    c1:   [255,    255,    255],     c2:    [220, 220, 220],              effect:    'dustmotes'  },    // 8 Obsidian
 ];
 
 window.FX_EFFECTS = {
@@ -2036,8 +2036,8 @@ function launchApp(uid){
   const ctx=canvas.getContext('2d');
   let rafId=null,stopped=false,frame=0,LW=window.innerWidth,LH=window.innerHeight;
   // ── Pick the i-Cons DRT particle effect that matches the active colour theme ──
- let fxThemeIdx=_baseWeeklyThemeIndex();
-  try{const ov=localStorage.getItem('drt_theme_override');if(ov!==null&&ov!==''){const oi=parseInt(ov,10);if(!isNaN(oi)&&oi>=0&&oi<=8){fxThemeIdx=oi;}}}catch(e){}
+  let fxThemeIdx=_baseWeeklyThemeIndex();
+  try{const ov=localStorage.getItem('drt_theme_override');if(ov!==null&&ov!==''){const oi=parseInt(ov,10);if(!isNaN(oi)&&oi>=0&&oi<=7)fxThemeIdx=oi;}}catch(e){}
   const fxDef=(window.FX_THEME_DEFS&&window.FX_THEME_DEFS[fxThemeIdx])||{bg:'#0a0200',c1:[244,98,28],c2:[255,160,80],effect:'embers'};
   const [fr1,fg1,fb1]=fxDef.c1,[fr2,fg2,fb2]=fxDef.c2;
   const fx=window.FX_EFFECTS[fxDef.effect](ctx,()=>LW,()=>LH,fr1,fg1,fb1,fr2,fg2,fb2);
@@ -4484,7 +4484,7 @@ function updateLoginChips(){
   let W,H;
 
   // ── Theme color extraction (reads from weekly theme after it's applied)
-   function getThemeRGB(){
+  function getThemeRGB(){
     const s=document.getElementById('weekly-theme-style');
     if(!s)return{r:249,g:115,b:22,r2:251,g2:191,b2:36};
     // Parse --teal value from injected style
@@ -4668,13 +4668,13 @@ function updateLoginChips(){
 
       // Rim light
       ctx.beginPath();ctx.arc(b.x,b.y,rr*0.985,0,Math.PI*2);
-      ctx.strokeStyle=`rgba(255,255,255,${(b.alpha*3.0).toFixed(3)})`;
+      ctx.strokeStyle=`rgba(255,255,255,${(b.alpha*1.6).toFixed(3)})`;
       ctx.lineWidth=Math.max(1,rr*0.012);
       ctx.stroke();
 
       // Specular highlight
       const hg=ctx.createRadialGradient(b.x-rr*0.35,b.y-rr*0.38,0,b.x-rr*0.35,b.y-rr*0.38,rr*0.45);
-      hg.addColorStop(0,`rgba(255,255,255,${(b.alpha*3.5).toFixed(3)})`);
+      hg.addColorStop(0,`rgba(255,255,255,${(b.alpha*1.8).toFixed(3)})`);
       hg.addColorStop(1,'rgba(255,255,255,0)');
       ctx.fillStyle=hg;
       ctx.beginPath();ctx.arc(b.x-rr*0.35,b.y-rr*0.38,rr*0.45,0,Math.PI*2);ctx.fill();
@@ -4704,10 +4704,9 @@ function updateLoginChips(){
       const alpha=0.08+0.06*Math.sin(b.phase);
       // Draw soft radial blob
       const grad=ctx.createRadialGradient(b.x,b.y,0,b.x,b.y,pulse);
-      	grad.addColorStop(0,`rgba(${cc.r},${cc.g},${cc.b},0)`);
-	grad.addColorStop(0.55,`rgba(${cc.r},${cc.g},${cc.b},${(b.alpha*1.0).toFixed(3)})`);
-	grad.addColorStop(0.9,`rgba(${cc.r},${cc.g},${cc.b},${(b.alpha*1.8).toFixed(3)})`);
-	grad.addColorStop(1,`rgba(${cc.r},${cc.g},${cc.b},0)`);
+      grad.addColorStop(0,`rgba(${cc.r},${cc.g},${cc.b},${(alpha*1.4).toFixed(3)})`);
+      grad.addColorStop(0.4,`rgba(${cc.r},${cc.g},${cc.b},${alpha.toFixed(3)})`);
+      grad.addColorStop(1,'rgba(0,0,0,0)');
       ctx.save();
       // Slight ellipse morph via scale
       const sx=1+0.12*Math.sin(b.morphPhase*0.7);
@@ -5463,21 +5462,26 @@ window.addEventListener('DOMContentLoaded', async () => {
 
 /* ===== WEEKLY THEME ENGINE ===== */
 function _baseWeeklyThemeIndex(){
-  return 8; // always Obsidian (black & white)
+  const now=new Date();
+  const jan4=new Date(now.getFullYear(),0,4);
+  const startOfWeek1=new Date(jan4);
+  startOfWeek1.setDate(jan4.getDate()-(jan4.getDay()||7)+1);
+  const weekNum=Math.floor((now-startOfWeek1)/(7*24*60*60*1000))+1;
+  return ((weekNum-1+2)%8); // offset=2 → week 24 = index 1 (Ocean)
 }
 
 // Cycle to the next color theme manually (per-browser override).
 // Click cycles 0→1→...→7→back to the weekly auto theme.
 function cycleThemeManual(){
-  return; // theme locked to Obsidian — cycling disabled
   let cur;
   try{
     const ov=localStorage.getItem('drt_theme_override');
     cur=(ov!==null&&ov!=='')?parseInt(ov,10):_baseWeeklyThemeIndex();
   }catch(e){cur=_baseWeeklyThemeIndex();}
-  const next=(cur+1)%9;
+  const next=(cur+1)%8;
   try{
     if(next===_baseWeeklyThemeIndex()){
+      // Back to the start of the cycle — clear override, return to weekly auto theme
       localStorage.removeItem('drt_theme_override');
     }else{
       localStorage.setItem('drt_theme_override',String(next));
@@ -5487,6 +5491,7 @@ function cycleThemeManual(){
   const btn=document.getElementById('theme-picker-btn');
   if(btn){btn.classList.remove('spin');requestAnimationFrame(()=>btn.classList.add('spin'));setTimeout(()=>btn.classList.remove('spin'),500);}
 }
+
 function applyWeeklyTheme(){
   let themeIndex=_baseWeeklyThemeIndex();
 
@@ -5495,7 +5500,7 @@ function applyWeeklyTheme(){
     const override=localStorage.getItem('drt_theme_override');
     if(override!==null && override!==''){
       const oi=parseInt(override,10);
-      if(!isNaN(oi)&&oi>=0&&oi<=8)themeIndex=oi;
+      if(!isNaN(oi)&&oi>=0&&oi<=7)themeIndex=oi;
     }
   }catch(e){}
 
@@ -5582,15 +5587,6 @@ function applyWeeklyTheme(){
      a1:'#7c5cff',a2:'#5436b8',a3:'#e0d4ff',
      rightBg:'linear-gradient(160deg,#faf8ff 0%,#f3eeff 50%,#fbf9ff 100%)',
      rightGlow:'rgba(124,92,255,0.08)'},
-
- // 8 ── OBSIDIAN  (pure black + white, both inside & outside)
-{bg:'linear-gradient(160deg,#000000 0%,#0a0a0a 40%,#050505 75%,#000000 100%)',
- blob1:'rgba(255,255,255,0.35)',blob2:'rgba(255,255,255,0.18)',
- line:'linear-gradient(180deg,transparent,#ffffff 25%,#cccccc 55%,#ffffff 85%,transparent)',
- heroGrad:'linear-gradient(135deg,#ffffff,#e5e5e5,#ffffff)',
- a1:'#ffffff',a2:'#e0e0e0',a3:'#ffffff',
- rightBg:'linear-gradient(160deg,#ffffff 0%,#fafafa 50%,#ffffff 100%)',
- rightGlow:'rgba(0,0,0,0.06)'},
   ];
 
   const t=THEMES[themeIndex];
@@ -5628,7 +5624,7 @@ function applyWeeklyTheme(){
     .teal-line{background:${t.line}!important;}
     .hero-eyebrow{color:${t.a1}!important;}
     .hero-eyebrow::before{background:linear-gradient(90deg,${t.a1},${t.a3})!important;}
-    .hero-heading em{background:none!important;-webkit-text-fill-color:#ffffff!important;color:#ffffff!important;}
+    .hero-heading em{background:${t.heroGrad}!important;-webkit-background-clip:text!important;-webkit-text-fill-color:transparent!important;background-clip:text!important;}
     .brand-dot{color:${t.a1}!important;}
     .quote-author{color:${t.a1}!important;}
     .quote-card{background:rgba(0,0,0,0.22)!important;border-color:${t.a1}44!important;}
@@ -5640,16 +5636,6 @@ function applyWeeklyTheme(){
     .split-right::after{background:radial-gradient(circle,${t.rightGlow} 0%,transparent 70%)!important;}
     /* ── Login button ── */
     .btn-cta{background:linear-gradient(135deg,${t.a1},${t.a2})!important;box-shadow:0 8px 24px ${t.a1}55!important;}
-	${themeIndex===8?`
-	.btn-cta{background:linear-gradient(135deg,#1a1a1a,#000000)!important;box-shadow:0 8px 24px rgba(255,255,255,0.15)!important;border:1px solid rgba(255,255,255,0.25)!important;}
-	.btn-cta-inner{color:#ffffff!important;}
-	.form-tag{background:rgba(255,255,255,0.08)!important;border-color:rgba(255,255,255,0.25)!important;color:#000!important;}
-	.form-tag::before{background:#000!important;}
-	.type-btn.active{color:#000!important;}
-	.forgot-link{color:#000!important;text-decoration-color:rgba(0,0,0,0.35)!important;}
-	.forgot-link:hover{text-decoration-color:#000!important;}
-	.fld-icon{filter:grayscale(1) brightness(0.3)!important;}
-	`:''}
     .btn-cta:hover{box-shadow:0 12px 32px ${t.a1}77!important;}
     /* ── Form focus rings ── */
     .fld input:focus,.fld select:focus{border-color:${t.a1}!important;box-shadow:0 0 0 3px ${t.a1}22!important;}
